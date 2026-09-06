@@ -1,45 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.email == 'hyprpranav@gmail.com' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && request.auth.token.email == 'hyprpranav@gmail.com' && getRole() == 'admin';
     }
-    function isManager() {
-      return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+
+    function isManagerOrAdmin() {
+      return isAuthenticated() && (getRole() == 'manager' || getRole() == 'admin');
     }
+
     function isOwner(uid) {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
     // USERS COLLECTION
     match /users/{userId} {
-      allow read: if isOwner(userId) || isManager();
-      // Normal users (worker/manager) can create their pending account
+      // Any authenticated user can read their own doc
+      // Admins and managers can read all user docs
+      allow read: if isOwner(userId) || isManagerOrAdmin();
+
+      // Workers/managers register as pending (isActive: false, role: worker/manager)
       allow create: if isOwner(userId) && request.resource.data.role in ['manager', 'worker'] && request.resource.data.isActive == false
-        // Bootstrap exception: allow admin email to create their own admin doc
+        // Bootstrap: allow the admin email to create/own their admin doc
         || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
-      // Admin can update/delete; owners can update their own doc (needed for admin bootstrap setDoc merge)
-      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
+
+      // Only admin can update others; admin email can always update own doc (bootstrap)
+      allow update: if isAdmin()
+        || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
+
       allow delete: if isAdmin();
     }
 
     // WORKERS COLLECTION
     match /workers/{workerId} {
-      // Any authenticated user can read worker data (workers need to see their own, managers/admins need to see all)
       allow read: if isAuthenticated();
-      // Only admins can create/update/delete workers (managers only view)
       allow write: if isAdmin();
     }
 
     match /managers/{managerId} {
-      allow read: if isManager();
+      allow read: if isManagerOrAdmin();
       allow write: if isAdmin();
     }
 
@@ -49,45 +58,39 @@ service cloud.firestore {
 
     // EXPOSURE RECORDS
     match /exposureRecords/{recordId} {
-      // Admins and managers can read all
-      // Workers can only read their own
-      allow read: if isManager() || (isAuthenticated() && resource.data.workerId == request.auth.uid);
-      // Only managers/admins can create records via scanning
-      allow create: if isManager();
-      // Records are immutable once created
+      allow read: if isManagerOrAdmin() || (isAuthenticated() && resource.data.workerId == request.auth.uid);
+      allow create: if isManagerOrAdmin();
       allow update, delete: if false;
     }
 
     // WORKER REQUESTS
     match /workerRequests/{requestId} {
-      // Anyone can create a request (registration page)
       allow create: if true;
-      allow read: if isManager();
+      allow read: if isManagerOrAdmin();
       allow update, delete: if isAdmin();
     }
 
     match /managerRequests/{requestId} {
       allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
-      allow read: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow read, update, delete: if isAdmin();
     }
 
     // AUDIT LOGS
     match /auditLogs/{logId} {
-      // Admins can read
       allow read: if isAdmin();
-      // Managers and Admins can create
-      allow create: if isManager();
-      // Immutable
+      allow create: if isManagerOrAdmin();
       allow update, delete: if false;
     }
 
     // CALIBRATION MODELS
     match /calibrationModels/{modelId} {
-      // Anyone authenticated can read (managers need to know what they're scanning with)
       allow read: if isAuthenticated();
-      // Only admins can change calibration
       allow write: if isAdmin();
+    }
+
+    // QR RECORDS
+    match /qrRecords/{recordId} {
+      allow read, write: if isManagerOrAdmin();
     }
   }
 }

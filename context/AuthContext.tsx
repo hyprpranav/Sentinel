@@ -34,8 +34,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setState({ user: null, role: null, displayName: null, loading: false });
         return;
       }
+      // Timeout fallback: if Firestore read hangs (e.g. rules issue / network),
+      // unblock the UI after 8s so the app doesn't freeze on loading screen.
+      const timeout = setTimeout(() => {
+        setState({ user, role: null, displayName: user.displayName, loading: false });
+      }, 8000);
+
       try {
         const data = await getUserData(user.uid);
+        clearTimeout(timeout);
         setState({
           user,
           role: (data?.role as UserRole) ?? null,
@@ -43,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           loading: false,
         });
       } catch {
+        clearTimeout(timeout);
         setState({ user, role: null, displayName: user.displayName, loading: false });
       }
     });
