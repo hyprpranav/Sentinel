@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
 // The actual role enforcement happens in Firestore security rules.
 // This middleware handles redirect logic for UX only.
 
-const PUBLIC_PATHS = ['/login', '/register', '/worker'];
+const PUBLIC_PATHS = ['/login', '/register', '/worker', '/admin-setup', '/manager-register'];
 
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
