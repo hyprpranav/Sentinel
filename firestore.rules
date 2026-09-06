@@ -21,8 +21,13 @@ service cloud.firestore {
     // USERS COLLECTION
     match /users/{userId} {
       allow read: if isOwner(userId) || isManager();
-      allow create: if isOwner(userId) && request.resource.data.role in ['manager', 'worker'] && request.resource.data.isActive == false;
-      allow update, delete: if isAdmin();
+      // Normal users (worker/manager) can create their pending account
+      allow create: if isOwner(userId) && request.resource.data.role in ['manager', 'worker'] && request.resource.data.isActive == false
+        // Bootstrap exception: allow admin email to create their own admin doc
+        || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
+      // Admin can update/delete; owners can update their own doc (needed for admin bootstrap setDoc merge)
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
+      allow delete: if isAdmin();
     }
 
     // WORKERS COLLECTION
