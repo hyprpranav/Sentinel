@@ -15,7 +15,11 @@ export const COLLECTIONS = {
 } as const;
 
 export function generateWorkerId(sequence: number): string {
-  return `SNT-W-${1000 + sequence}`;
+  return `SW${String(sequence).padStart(4, '0')}`;
+}
+
+export function generateManagerId(sequence: number): string {
+  return `SM${String(sequence).padStart(4, '0')}`;
 }
 
 export function generateCartridgeId(): string {

@@ -1,0 +1,51 @@
+- [x] **Phase 1: Project Scaffolding & Setup**
+  - [x] Initialize Next.js 14 project
+  - [x] Configure Tailwind CSS, dependencies, and environment variables
+  - [x] Define TypeScript interfaces (Domain Models)
+  - [x] Establish Design System (`globals.css`)
+- [x] **Phase 2: Firebase & Cloudinary Infrastructure**
+  - [x] Setup Firebase init (`auth.ts`, `firestore.ts`)
+  - [x] Setup Cloudinary upload utility
+  - [x] Setup robust auth context and middleware for role-based routing
+- [x] **Phase 3: Image Analysis & Core Math Module**
+  - [x] Implement colour difference math (CIE76 / CIE94 proxy)
+  - [x] Build dose estimation logic (`calibrationModel.ts`)
+  - [x] Camera hook (`useCamera.ts`) and frame capture utility
+- [x] **Phase 4: Common UI Components**
+  - [x] Layout shells (Admin Sidebar, Manager Sidebar, Worker BottomNav)
+  - [x] Badges, Loading screens, Empty states, Theme toggle
+- [x] **Phase 5: Authentication & Registration Flows**
+  - [x] Unified Login page
+  - [x] Worker registration page (creates pending request)
+- [x] **Phase 6: Admin Dashboard & Analytics**
+  - [x] System overview stats
+  - [x] Exposure analytics (Recharts integration)
+- [x] **Phase 7: Admin Management Panels**
+  - [x] Worker directory
+  - [x] Pending registration requests approval flow
+  - [x] Manager directory (activate/disable)
+- [x] **Phase 8: Admin Calibration & Dosimeter Management**
+  - [x] Dosimeter pad status tracking / replacement
+  - [x] Calibration model parameter tuning UI
+  - [x] Audit logs viewer
+- [x] **Phase 9: Manager Operations UI**
+  - [x] Manager dashboard (assigned workers, today's scans)
+  - [x] Assigned workers list and dosimeter status
+  - [x] Exposure history for facility
+- [x] **Phase 10: The Dosimeter Scan Workflow (Core Feature)**
+  - [x] Step 1: QR ID input
+  - [x] Step 2: Worker verification
+  - [x] Step 3: Camera capture interface
+  - [x] Step 4: Synthetic Demo analysis & Dose estimation
+  - [x] Step 5: Save record to Firestore
+- [x] **Phase 11: Worker Interface**
+  - [x] Mobile-first dashboard (latest dose)
+  - [x] Digital QR ID card generator (`qrcode` + `html2canvas`)
+  - [x] Personal exposure history log
+- [x] **Phase 12: Public Emergency Scanning**
+  - [x] Read-only, unauthenticated verification route (`/worker/[id]`)
+- [x] **Phase 13: Security & Verification**
+  - [x] Add Firebase rules (firestore.rules)
+  - [x] Build test
+- [x] **Phase 14: Handover & Documentation**
+  - [x] Provide test credentials and feature walkthrough

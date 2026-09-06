@@ -7,7 +7,6 @@ export interface Worker {
   publicId: string; // e.g. SNT-W-1042
   uid?: string; // Firebase Auth UID if they have login access
   fullName: string;
-  employeeId: string;
   department: string;
   designation: string;
   email?: string;
@@ -25,11 +24,11 @@ export interface Worker {
 export interface WorkerRequest {
   id: string;
   fullName: string;
-  employeeId: string;
   department: string;
   designation: string;
   email?: string;
   phone?: string;
+  uid?: string;
   profilePhotoUrl?: string;
   status: RequestStatus;
   submittedAt: Date;

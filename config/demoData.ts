@@ -14,7 +14,6 @@ export const DEMO_WORKERS: Partial<Worker>[] = [
   {
     publicId: 'SNT-W-1042',
     fullName: 'Arun Kumar Sharma',
-    employeeId: 'MRPL-EMP-0042',
     department: 'Process Unit — CDU',
     designation: 'Process Operator',
     status: 'active',
@@ -23,7 +22,6 @@ export const DEMO_WORKERS: Partial<Worker>[] = [
   {
     publicId: 'SNT-W-1043',
     fullName: 'Rajesh Nair',
-    employeeId: 'MRPL-EMP-0043',
     department: 'Utility Block',
     designation: 'Senior Operator',
     status: 'active',
@@ -32,7 +30,6 @@ export const DEMO_WORKERS: Partial<Worker>[] = [
   {
     publicId: 'SNT-W-1044',
     fullName: 'Priya Menon',
-    employeeId: 'MRPL-EMP-0044',
     department: 'HSE Department',
     designation: 'Safety Officer',
     status: 'active',

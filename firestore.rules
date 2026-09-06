@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'hyprpranav@gmail.com' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isManager() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isManager();
+      allow create: if isOwner(userId) && request.resource.data.role in ['manager', 'worker'] && request.resource.data.isActive == false;
+      allow update, delete: if isAdmin();
+    }
+
+    // WORKERS COLLECTION
+    match /workers/{workerId} {
+      // Any authenticated user can read worker data (workers need to see their own, managers/admins need to see all)
+      allow read: if isAuthenticated();
+      // Only admins can create/update/delete workers (managers only view)
+      allow write: if isAdmin();
+    }
+
+    match /managers/{managerId} {
+      allow read: if isManager();
+      allow write: if isAdmin();
+    }
+
+    match /adminSettings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+
+    // EXPOSURE RECORDS
+    match /exposureRecords/{recordId} {
+      // Admins and managers can read all
+      // Workers can only read their own
+      allow read: if isManager() || (isAuthenticated() && resource.data.workerId == request.auth.uid);
+      // Only managers/admins can create records via scanning
+      allow create: if isManager();
+      // Records are immutable once created
+      allow update, delete: if false;
+    }
+
+    // WORKER REQUESTS
+    match /workerRequests/{requestId} {
+      // Anyone can create a request (registration page)
+      allow create: if true;
+      allow read: if isManager();
+      allow update, delete: if isAdmin();
+    }
+
+    match /managerRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // AUDIT LOGS
+    match /auditLogs/{logId} {
+      // Admins can read
+      allow read: if isAdmin();
+      // Managers and Admins can create
+      allow create: if isManager();
+      // Immutable
+      allow update, delete: if false;
+    }
+
+    // CALIBRATION MODELS
+    match /calibrationModels/{modelId} {
+      // Anyone authenticated can read (managers need to know what they're scanning with)
+      allow read: if isAuthenticated();
+      // Only admins can change calibration
+      allow write: if isAdmin();
+    }
+  }
+}

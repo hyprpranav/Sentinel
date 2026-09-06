@@ -7,7 +7,22 @@ export interface AppUser {
   displayName: string;
   role: UserRole;
   profilePhotoUrl?: string;
+  publicId?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ManagerRequest {
+  id: string;
+  uid: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  department?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: Date;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  rejectionReason?: string;
 }
