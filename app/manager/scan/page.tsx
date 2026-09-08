@@ -2,6 +2,7 @@
 // app/(manager)/scan/page.tsx
 // Complete dosimeter scanning workflow
 import { useEffect, useState, useRef } from 'react';
+import jsQR from 'jsqr';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkerByPublicId } from '@/services/workerService';
 import { getWorkerExposureHistory, saveExposureRecord } from '@/services/exposureService';
@@ -49,6 +50,7 @@ export default function ScanPage() {
   const imgRef = useRef<HTMLImageElement>(null);
   const qrVideoRef = useRef<HTMLVideoElement>(null);
   const qrStreamRef = useRef<MediaStream | null>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => () => {
     qrStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -101,33 +103,45 @@ export default function ScanPage() {
 
   const startQrScanner = async () => {
     setQrError('');
-    if (!('BarcodeDetector' in window)) {
-      setQrError('QR camera scanning is not supported in this browser. Enter the SENTINEL ID manually.');
-      return;
-    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       qrStreamRef.current = stream;
       setQrScanning(true);
-      if (qrVideoRef.current) {
-        qrVideoRef.current.srcObject = stream;
-        await qrVideoRef.current.play();
-      }
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      if (!qrVideoRef.current || !qrCanvasRef.current) throw new Error('QR camera view unavailable');
+      qrVideoRef.current.srcObject = stream;
+      await qrVideoRef.current.play();
 
-      const Detector = (window as typeof window & {
+      const hasNativeDetector = 'BarcodeDetector' in window;
+      const Detector = hasNativeDetector ? (window as typeof window & {
         BarcodeDetector: new (options?: { formats: string[] }) => {
           detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
         };
-      }).BarcodeDetector;
-      const detector = new Detector({ formats: ['qr_code'] });
+      }).BarcodeDetector : null;
+      const detector = Detector ? new Detector({ formats: ['qr_code'] }) : null;
       const scan = async () => {
         if (!qrVideoRef.current || !qrStreamRef.current) return;
         try {
-          const codes = await detector.detect(qrVideoRef.current);
-          if (codes[0]?.rawValue) {
-            const value = codes[0].rawValue;
+          let value = '';
+          if (detector) {
+            const codes = await detector.detect(qrVideoRef.current);
+            value = codes[0]?.rawValue ?? '';
+          } else {
+            const video = qrVideoRef.current;
+            const canvas = qrCanvasRef.current;
+            if (!canvas) return;
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const context = canvas.getContext('2d', { willReadFrequently: true });
+              context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const image = context?.getImageData(0, 0, canvas.width, canvas.height);
+              if (image) value = jsQR(image.data, image.width, image.height, { inversionAttempts: 'attemptBoth' })?.data ?? '';
+            }
+          }
+          if (value) {
             setQrInput(value);
             stopQrScanner();
             await resolveWorker(value);
@@ -140,6 +154,7 @@ export default function ScanPage() {
       };
       window.setTimeout(scan, 250);
     } catch {
+      stopQrScanner();
       setQrError('Camera access denied or unavailable. Enter the SENTINEL ID manually.');
     }
   };
@@ -308,6 +323,7 @@ export default function ScanPage() {
             {qrScanning && (
               <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '0.75rem', background: '#000', aspectRatio: '1 / 1' }}>
                 <video ref={qrVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <canvas ref={qrCanvasRef} style={{ display: 'none' }} />
                 <div style={{ position: 'absolute', inset: '11%', border: '2px solid #38bdf8', borderRadius: '0.75rem', boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
                 <button type="button" className="btn btn-ghost" onClick={stopQrScanner} style={{ position: 'absolute', top: 12, right: 12, color: '#fff' }}>Close</button>
               </div>
