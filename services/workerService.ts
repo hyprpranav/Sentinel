@@ -59,6 +59,7 @@ export async function getWorkerByPublicId(publicId: string): Promise<Worker | nu
     const snap = await getDocs(query(
       collection(db, COLLECTIONS.WORKERS),
       where('publicId', '==', candidate),
+      where('status', '==', 'active'),
       limit(1)
     ));
     if (!snap.empty) {
