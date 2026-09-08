@@ -2,6 +2,7 @@
 // app/(worker)/layout.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { WorkerBottomNav } from '@/components/layout/WorkerBottomNav';
 import { SentinelLogo } from '@/components/layout/SentinelLogo';
@@ -14,14 +15,19 @@ import { Menu } from 'lucide-react';
 function WorkerShell({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuthContext();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isPublicWorkerProfile = /^\/worker\/[^/]+$/.test(pathname);
 
   useEffect(() => {
+    if (isPublicWorkerProfile) return;
     if (!loading) {
       if (!user) { router.replace('/login'); return; }
       if (role !== 'worker') { router.replace('/login?error=unauthorized'); }
     }
-  }, [user, role, loading, router]);
+  }, [user, role, loading, router, isPublicWorkerProfile]);
+
+  if (isPublicWorkerProfile) return <>{children}</>;
 
   if (loading) return <LoadingScreen message="Loading SENTINEL..." />;
   if (!user || role !== 'worker') return null;
