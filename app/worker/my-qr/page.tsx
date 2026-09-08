@@ -20,8 +20,6 @@ export default function MyQRPage() {
   const [loading, setLoading] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const cardRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!user) return;
     getDocs(
