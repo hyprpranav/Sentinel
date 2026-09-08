@@ -19,8 +19,16 @@ import { ManagerRequest } from '@/types/user';
 import { toFirestoreDate } from '@/lib/utils/date';
 
 export async function submitManagerRequest(data: Omit<ManagerRequest, 'id' | 'status' | 'submittedAt'>) {
+  const requestData = Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined)
+  );
+  const existing = await getDocs(
+    query(collection(db, 'managerRequests'), where('uid', '==', data.uid), where('status', '==', 'pending'))
+  );
+  if (!existing.empty) return existing.docs[0].id;
+
   const ref = await addDoc(collection(db, 'managerRequests'), {
-    ...data,
+    ...requestData,
     status: 'pending',
     submittedAt: serverTimestamp(),
   });
@@ -28,7 +36,7 @@ export async function submitManagerRequest(data: Omit<ManagerRequest, 'id' | 'st
 }
 
 export async function getPendingManagerRequests(): Promise<ManagerRequest[]> {
-  const snap = await getDocs(query(collection(db, 'managerRequests'), where('status', '==', 'pending'), orderBy('submittedAt', 'desc')));
+  const snap = await getDocs(query(collection(db, 'managerRequests'), where('status', '==', 'pending')));
   return snap.docs.map((item) => {
     const data = item.data();
     return {
@@ -41,7 +49,7 @@ export async function getPendingManagerRequests(): Promise<ManagerRequest[]> {
       status: data.status,
       submittedAt: toFirestoreDate(data.submittedAt as Timestamp) ?? new Date(),
     } as ManagerRequest;
-  });
+  }).sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
 export async function approveManagerRequest(requestId: string, reviewerId: string) {
@@ -99,7 +107,6 @@ export async function getPastManagerRequests(): Promise<ManagerRequest[]> {
     query(
       collection(db, 'managerRequests'),
       where('status', 'in', ['approved', 'rejected']),
-      orderBy('submittedAt', 'desc'),
       limit(50)
     )
   );
@@ -118,7 +125,7 @@ export async function getPastManagerRequests(): Promise<ManagerRequest[]> {
       reviewedAt: toFirestoreDate(data.reviewedAt as Timestamp),
       rejectionReason: data.rejectionReason,
     } as ManagerRequest;
-  });
+  }).sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
 export async function deleteManager(managerId: string): Promise<void> {

@@ -32,6 +32,7 @@ export default function AdminRequestsPage() {
 
   const loadRequests = () => {
     setLoading(true);
+    setError('');
     Promise.all([
       getPendingRequests(),
       getPendingManagerRequests(),
@@ -42,6 +43,9 @@ export default function AdminRequestsPage() {
       setManagerRequests(m);
       setPastRequests(pw);
       setPastManagerRequests(pm);
+    }).catch((err: unknown) => {
+      console.error('Failed to load registration requests:', err);
+      setError('Unable to load requests. Check the Firestore rules and try again.');
     }).finally(() => setLoading(false));
   };
 
@@ -59,7 +63,10 @@ export default function AdminRequestsPage() {
       setPastManagerRequests(pm);
       setLoading(false);
     };
-    run();
+    run().catch((err: unknown) => {
+      console.error('Failed to load registration requests:', err);
+      setError('Unable to load requests. Check the Firestore rules and try again.');
+    });
   }, []);
 
   const handleManagerDecision = async (request: ManagerRequest, approve: boolean) => {

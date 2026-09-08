@@ -40,7 +40,22 @@ export async function registerPendingUser(
   displayName: string,
   role: Exclude<UserRole, 'admin'>
 ) {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  let credential;
+  try {
+    credential = await createUserWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : String(error);
+    if (!code.includes('email-already-in-use')) throw error;
+
+    // Recover accounts left behind when a previous request write failed.
+    const existing = await signInWithEmailAndPassword(auth, email, password);
+    const existingData = await getUserData(existing.user.uid);
+    if (!existingData || existingData.role !== role || existingData.isActive) {
+      await signOut(auth);
+      throw error;
+    }
+    return existing.user;
+  }
   const user = credential.user;
   await updateProfile(user, { displayName });
   await setDoc(doc(db, 'users', user.uid), {

@@ -81,6 +81,14 @@ export async function submitWorkerRequest(data: Omit<WorkerRequest, 'id' | 'stat
   const requestData = Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined)
   );
+
+  if (data.uid) {
+    const existing = await getDocs(
+      query(collection(db, COLLECTIONS.WORKER_REQUESTS), where('uid', '==', data.uid), where('status', '==', 'pending'))
+    );
+    if (!existing.empty) return existing.docs[0].id;
+  }
+
   const ref = await addDoc(collection(db, COLLECTIONS.WORKER_REQUESTS), {
     ...requestData,
     status: 'pending',
@@ -93,8 +101,7 @@ export async function getPendingRequests(): Promise<WorkerRequest[]> {
   const snap = await getDocs(
     query(
       collection(db, COLLECTIONS.WORKER_REQUESTS),
-      where('status', '==', 'pending'),
-      orderBy('submittedAt', 'desc')
+      where('status', '==', 'pending')
     )
   );
   return snap.docs.map((d) => {
@@ -113,7 +120,7 @@ export async function getPendingRequests(): Promise<WorkerRequest[]> {
       reviewedAt: toFirestoreDate(data.reviewedAt),
       rejectionReason: data.rejectionReason,
     } as WorkerRequest;
-  });
+  }).sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
 export async function approveWorkerRequest(
@@ -198,7 +205,6 @@ export async function getPastWorkerRequests(): Promise<WorkerRequest[]> {
     query(
       collection(db, COLLECTIONS.WORKER_REQUESTS),
       where('status', 'in', ['approved', 'rejected']),
-      orderBy('submittedAt', 'desc'),
       limit(50)
     )
   );
@@ -218,7 +224,7 @@ export async function getPastWorkerRequests(): Promise<WorkerRequest[]> {
       reviewedAt: toFirestoreDate(data.reviewedAt),
       rejectionReason: data.rejectionReason,
     } as WorkerRequest;
-  });
+  }).sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
 export async function deleteWorker(workerId: string): Promise<void> {

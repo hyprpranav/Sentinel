@@ -68,13 +68,14 @@ service cloud.firestore {
     // WORKER REQUESTS
     match /workerRequests/{requestId} {
       allow create: if true;
-      allow read: if isManagerOrAdmin();
+      allow read: if isManagerOrAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow update, delete: if isAdmin();
     }
 
     match /managerRequests/{requestId} {
       allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     // AUDIT LOGS
