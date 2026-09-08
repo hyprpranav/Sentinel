@@ -43,14 +43,7 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main style={{
-        paddingTop: 'calc(var(--topbar-height) + 1.25rem)',
-        paddingBottom: 'calc(64px + 1.25rem)',
-        paddingLeft: '1rem',
-        paddingRight: '1rem',
-        maxWidth: 540,
-        margin: '0 auto',
-      }}>
+      <main className="worker-main">
         <div style={{ marginBottom: '1rem' }}>
           <QuickCameraButton userId={user.uid} role="worker" displayName={user.displayName} variant="card" />
         </div>

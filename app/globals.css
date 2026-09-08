@@ -547,6 +547,26 @@
 
   .bottom-nav-item.active { color: var(--color-accent); }
 
+  .worker-main {
+    padding-top: calc(var(--topbar-height) + 1.25rem);
+    padding-bottom: calc(64px + 1.25rem);
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 1024px) {
+    .bottom-nav { display: none; }
+    .worker-main {
+      max-width: 1180px;
+      padding: calc(var(--topbar-height) + 2rem) 2.5rem 2.5rem;
+    }
+    .worker-main > div:first-child {
+      max-width: none;
+    }
+  }
+
   /* ── Dose Display ── */
   .dose-value {
     font-size: 3rem;
