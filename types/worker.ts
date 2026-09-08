@@ -11,6 +11,11 @@ export interface Worker {
   designation: string;
   email?: string;
   phone?: string;
+  address?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  guardianName?: string;
+  guardianContact?: string;
   profilePhotoUrl?: string;
   managerId?: string;
   status: WorkerStatus;
@@ -28,6 +33,11 @@ export interface WorkerRequest {
   designation: string;
   email?: string;
   phone?: string;
+  address?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  guardianName?: string;
+  guardianContact?: string;
   uid?: string;
   profilePhotoUrl?: string;
   status: RequestStatus;

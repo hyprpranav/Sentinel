@@ -27,6 +27,11 @@ export default function WorkerProfilePage() {
     phone: '',
     department: '',
     designation: '',
+    address: '',
+    bloodGroup: '',
+    dateOfBirth: '',
+    guardianName: '',
+    guardianContact: '',
   });
 
   useEffect(() => {
@@ -59,6 +64,11 @@ export default function WorkerProfilePage() {
           phone: w.phone || '',
           department: w.department || '',
           designation: w.designation || '',
+          address: w.address || '',
+          bloodGroup: w.bloodGroup || '',
+          dateOfBirth: w.dateOfBirth || '',
+          guardianName: w.guardianName || '',
+          guardianContact: w.guardianContact || '',
         });
       }
     }).finally(() => setLoading(false));
@@ -82,6 +92,11 @@ export default function WorkerProfilePage() {
         phone: formData.phone,
         department: formData.department,
         designation: formData.designation,
+        address: formData.address,
+        bloodGroup: formData.bloodGroup,
+        dateOfBirth: formData.dateOfBirth,
+        guardianName: formData.guardianName,
+        guardianContact: formData.guardianContact,
       });
       setSuccess('Profile updated successfully.');
       setWorker({ ...worker, ...formData });
@@ -146,6 +161,14 @@ export default function WorkerProfilePage() {
                 <label className="block text-sm font-medium mb-1 text-gray-300">Designation</label>
                 <input type="text" className="input-field w-full" value={formData.designation} onChange={(e) => setFormData({...formData, designation: e.target.value})} required />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium mb-1 text-gray-300">Address</label><textarea className="input-field w-full" rows={2} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-gray-300">Date of Birth</label><input type="date" className="input-field w-full" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-gray-300">Blood Group</label><input type="text" className="input-field w-full" placeholder="e.g. O+" value={formData.bloodGroup} onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-gray-300">Guardian / Parent Name</label><input type="text" className="input-field w-full" value={formData.guardianName} onChange={(e) => setFormData({...formData, guardianName: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-gray-300">Guardian / Parent Contact</label><input type="tel" className="input-field w-full" value={formData.guardianContact} onChange={(e) => setFormData({...formData, guardianContact: e.target.value})} /></div>
             </div>
 
             <div className="pt-4">

@@ -43,14 +43,16 @@ service cloud.firestore {
 
     // WORKERS COLLECTION
     match /workers/{workerId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated() || resource.data.status == 'active';
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow delete: if isAdmin();
     }
 
     match /managers/{managerId} {
       allow read: if isManagerOrAdmin();
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow delete: if isAdmin();
     }
 
@@ -60,7 +62,9 @@ service cloud.firestore {
 
     // EXPOSURE RECORDS
     match /exposureRecords/{recordId} {
-      allow read: if isManagerOrAdmin() || (isAuthenticated() && resource.data.workerId == request.auth.uid);
+      allow read: if isManagerOrAdmin()
+        || (isAuthenticated() && resource.data.workerId == request.auth.uid)
+        || resource.data.isPublicVisible == true;
       allow create: if isManagerOrAdmin() || (isAuthenticated() && request.resource.data.workerId == request.auth.uid);
       allow update, delete: if false;
     }

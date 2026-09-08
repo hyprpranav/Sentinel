@@ -4,7 +4,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkerByPublicId } from '@/services/workerService';
-import { saveExposureRecord } from '@/services/exposureService';
+import { getWorkerExposureHistory, saveExposureRecord } from '@/services/exposureService';
+import { ExposureRecord } from '@/types/exposure';
 import { uploadToCloudinary } from '@/lib/cloudinary/config';
 import { analyseStripImage, captureVideoFrame, simulateDemoAnalysis } from '@/lib/imageAnalysis';
 import { estimateDose } from '@/config/calibrationModel';
@@ -28,6 +29,7 @@ export default function ScanPage() {
   const [step, setStep] = useState<Step>('qr');
   const [qrInput, setQrInput] = useState('');
   const [worker, setWorker] = useState<Worker | null>(null);
+  const [workerHistory, setWorkerHistory] = useState<ExposureRecord[]>([]);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [duration, setDuration] = useState('8');
@@ -76,6 +78,7 @@ export default function ScanPage() {
       const found = await getWorkerByPublicId(id);
       if (!found) { setError('Worker not found. Please check the QR code.'); return; }
       setWorker(found);
+      setWorkerHistory(await getWorkerExposureHistory(found.id, 30).catch(() => []));
       setStep('confirm-worker');
     } catch {
       setError('Failed to identify worker. Please try again.');
@@ -371,6 +374,20 @@ export default function ScanPage() {
               <span>Dosimeter status: <strong>{dosimeterStatusLabel(worker.dosimeterStatus)}</strong>. Record result with caution.</span>
             </div>
           ) : null}
+
+          <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
+            <div>
+              <strong>Worker details</strong>
+              <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+                {worker.designation} · {worker.email ?? 'No email'}
+                {worker.bloodGroup ? ` · Blood group ${worker.bloodGroup}` : ''}
+              </div>
+              {worker.guardianName && worker.guardianContact && (
+                <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>Emergency contact: {worker.guardianName} · {worker.guardianContact}</div>
+              )}
+              <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>Previous 30-day records: {workerHistory.length}</div>
+            </div>
+          </div>
 
           <div className="two-col" style={{ gap: '0.75rem', marginBottom: '1rem' }}>
             <div className="form-group">

@@ -118,16 +118,13 @@ export async function getPublicWorkerExposure(workerId: string): Promise<Exposur
   since.setDate(since.getDate() - 15);
 
   const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-      where('workerId', '==', workerId),
-      where('isPublicVisible', '==', true),
-      where('createdAt', '>=', Timestamp.fromDate(since)),
-      orderBy('createdAt', 'desc'),
-      limit(15)
-    )
+    query(collection(db, COLLECTIONS.EXPOSURE_RECORDS), where('isPublicVisible', '==', true), limit(100))
   );
-  return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+  return snap.docs
+    .map((d) => docToRecord(d.id, d.data() as Record<string, unknown>))
+    .filter((record) => record.workerId === workerId && record.createdAt >= since)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 15);
 }
 
 export async function getPendingScans(managerId?: string): Promise<ExposureRecord[]> {

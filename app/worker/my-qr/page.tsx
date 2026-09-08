@@ -96,6 +96,18 @@ export default function MyQRPage() {
         style={{ marginBottom: '1.25rem' }}
         id="worker-qr-card"
       >
+        {qrDataUrl && (
+          <div style={{ flexShrink: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrDataUrl}
+              alt={`QR code for ${worker.publicId}`}
+              width={110}
+              height={110}
+              style={{ display: 'block' }}
+            />
+          </div>
+        )}
         <div className="qr-card-body">
           <div style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.375rem' }}>
             SENTINEL · MRPL
@@ -109,18 +121,6 @@ export default function MyQRPage() {
           <div className="qr-card-id">{worker.publicId}</div>
           <div className="qr-card-brand">Passive H₂S Dosimeter Wristband</div>
         </div>
-        {qrDataUrl && (
-          <div style={{ flexShrink: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={qrDataUrl}
-              alt={`QR code for ${worker.publicId}`}
-              width={110}
-              height={110}
-              style={{ display: 'block' }}
-            />
-          </div>
-        )}
       </div>
 
       <button className="btn btn-primary" onClick={handleDownload} style={{ width: '100%', justifyContent: 'center' }}>

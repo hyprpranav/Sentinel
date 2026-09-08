@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { LogOut, Shield, Mail } from 'lucide-react';
 
-interface AdminData { displayName?: string; email?: string; role?: string; }
+interface AdminData { displayName?: string; email?: string; role?: string; address?: string; bloodGroup?: string; dateOfBirth?: string; guardianContact?: string; }
 
 export default function AdminProfilePage() {
   const { user } = useAuthContext();
@@ -21,6 +21,7 @@ export default function AdminProfilePage() {
 
   const [formData, setFormData] = useState({
     displayName: '',
+    address: '', bloodGroup: '', dateOfBirth: '', guardianContact: '',
   });
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function AdminProfilePage() {
         setAdminData(d);
         setFormData({
           displayName: d.displayName || '',
+          address: d.address || '', bloodGroup: d.bloodGroup || '', dateOfBirth: d.dateOfBirth || '', guardianContact: d.guardianContact || '',
         });
       }
     }).finally(() => setLoading(false));
@@ -51,6 +53,10 @@ export default function AdminProfilePage() {
       const ref = doc(db, COLLECTIONS.USERS, user.uid);
       await updateDoc(ref, {
         displayName: formData.displayName,
+        address: formData.address,
+        bloodGroup: formData.bloodGroup,
+        dateOfBirth: formData.dateOfBirth,
+        guardianContact: formData.guardianContact,
       });
       setSuccess('Profile updated successfully.');
       setAdminData({ ...adminData, ...formData });
@@ -81,6 +87,13 @@ export default function AdminProfilePage() {
               <Mail size={14} /> Email (Read-only)
             </label>
             <input type="text" className="input-field w-full bg-navy-bg cursor-not-allowed opacity-70" value={auth.currentUser?.email || adminData?.email || 'No email associated'} disabled />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Address</label><textarea className="input-field w-full" rows={2} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Date of Birth</label><input type="date" className="input-field w-full" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Blood Group</label><input className="input-field w-full" value={formData.bloodGroup} onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Emergency Contact</label><input className="input-field w-full" value={formData.guardianContact} onChange={(e) => setFormData({...formData, guardianContact: e.target.value})} /></div>
           </div>
 
           <div>

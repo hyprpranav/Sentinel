@@ -16,6 +16,11 @@ interface ManagerData {
   department?: string;
   email?: string;
   publicId?: string;
+  address?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  guardianName?: string;
+  guardianContact?: string;
 }
 
 export default function ManagerProfilePage() {
@@ -30,6 +35,7 @@ export default function ManagerProfilePage() {
     fullName: '',
     phone: '',
     department: '',
+    address: '', bloodGroup: '', dateOfBirth: '', guardianName: '', guardianContact: '',
   });
 
   useEffect(() => {
@@ -42,6 +48,7 @@ export default function ManagerProfilePage() {
           fullName: d.fullName || '',
           phone: d.phone || '',
           department: d.department || '',
+          address: d.address || '', bloodGroup: d.bloodGroup || '', dateOfBirth: d.dateOfBirth || '', guardianName: d.guardianName || '', guardianContact: d.guardianContact || '',
         });
       }
     }).finally(() => setLoading(false));
@@ -64,6 +71,11 @@ export default function ManagerProfilePage() {
         fullName: formData.fullName,
         phone: formData.phone,
         department: formData.department,
+        address: formData.address,
+        bloodGroup: formData.bloodGroup,
+        dateOfBirth: formData.dateOfBirth,
+        guardianName: formData.guardianName,
+        guardianContact: formData.guardianContact,
       });
       setSuccess('Profile updated successfully.');
       setManager({ ...manager, ...formData });
@@ -103,6 +115,13 @@ export default function ManagerProfilePage() {
               </label>
               <input type="text" className="input-field w-full bg-navy-bg cursor-not-allowed opacity-70" value={auth.currentUser?.email || manager?.email || 'No email associated'} disabled />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Address</label><textarea className="input-field w-full" rows={2} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Date of Birth</label><input type="date" className="input-field w-full" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Blood Group</label><input className="input-field w-full" value={formData.bloodGroup} onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})} /></div>
+            <div><label className="block text-sm font-medium mb-1 text-gray-300">Guardian Contact</label><input className="input-field w-full" value={formData.guardianContact} onChange={(e) => setFormData({...formData, guardianContact: e.target.value})} /></div>
           </div>
 
           <div>
