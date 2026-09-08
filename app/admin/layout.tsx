@@ -33,6 +33,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           actions={<QuickCameraButton userId={user.uid} role="admin" displayName={displayName} />}
         />
         <main className="main-content">
+          <div style={{ marginBottom: '1rem' }}>
+            <QuickCameraButton userId={user.uid} role="admin" displayName={displayName} variant="card" />
+          </div>
           {children}
         </main>
       </div>

@@ -63,7 +63,10 @@ service cloud.firestore {
     // EXPOSURE RECORDS
     match /exposureRecords/{recordId} {
       allow read: if isManagerOrAdmin()
-        || (isAuthenticated() && resource.data.workerId == request.auth.uid)
+        || (isAuthenticated() && (
+          resource.data.workerId == request.auth.uid
+          || get(/databases/$(database)/documents/workers/$(resource.data.workerId)).data.uid == request.auth.uid
+        ))
         || resource.data.isPublicVisible == true;
       allow create: if isManagerOrAdmin() || (isAuthenticated() && request.resource.data.workerId == request.auth.uid);
       allow update, delete: if false;

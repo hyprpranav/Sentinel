@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Camera, X, RefreshCw, Check, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Camera, X, RefreshCw, Check, Loader2, CheckCircle, AlertTriangle, Upload, Zap, ZoomIn } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary/config';
 import { analyzeDosimeterImage } from '@/services/mockAiService';
 import { db } from '@/lib/firebase/config';
@@ -11,11 +11,12 @@ interface QuickCameraButtonProps {
   userId: string;
   role: 'admin' | 'manager' | 'worker';
   displayName?: string | null;
+  variant?: 'icon' | 'card';
 }
 
 type OverlayState = 'idle' | 'camera' | 'preview' | 'uploading' | 'analysing' | 'done' | 'error';
 
-export function QuickCameraButton({ userId, role, displayName }: QuickCameraButtonProps) {
+export function QuickCameraButton({ userId, role, displayName, variant = 'icon' }: QuickCameraButtonProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -26,6 +27,8 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
   const [progress, setProgress] = useState(0);
   const [doseResult, setDoseResult] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [torchOn, setTorchOn] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   /* ── stop camera tracks ── */
   const stopCamera = useCallback(() => {
@@ -45,16 +48,38 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
     setProgress(0);
     setDoseResult(null);
     setErrorMsg('');
+    setTorchOn(false);
+    setZoom(1);
     setOverlayState('camera');
     try {
       const ms = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } },
       });
       streamRef.current = ms;
       if (videoRef.current) videoRef.current.srcObject = ms;
     } catch {
       setCameraError('Camera access denied or unavailable. Please allow camera permissions.');
     }
+  };
+
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    const capabilities = track?.getCapabilities() as MediaTrackCapabilities & { torch?: boolean } | undefined;
+    if (!track || !capabilities?.torch) return;
+    const next = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+    setTorchOn(next);
+  };
+
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCapturedImage(String(reader.result));
+      setOverlayState('preview');
+    };
+    reader.readAsDataURL(file);
   };
 
   /* ── capture frame ── */
@@ -143,6 +168,14 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
   };
 
   if (overlayState === 'idle') {
+    if (variant === 'card') {
+      return (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1.25rem', border: '1px solid var(--color-accent)' }}>
+          <div><p style={{ fontWeight: 700, marginBottom: 4 }}>Capture dosimeter reading</p><p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Take a photo or upload one for review before analysis.</p></div>
+          <button onClick={openCamera} className="btn btn-primary" style={{ flexShrink: 0 }}><Camera size={17} /> Open Camera</button>
+        </div>
+      );
+    }
     return (
       <button
         onClick={openCamera}
@@ -208,7 +241,7 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
             autoPlay
             playsInline
             muted
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom})` }}
           />
         )}
 
@@ -275,6 +308,13 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
             pointerEvents: 'none',
           }} />
         )}
+
+        {overlayState === 'camera' && !cameraError && (
+          <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8 }}>
+            <button onClick={toggleTorch} className="btn btn-ghost btn-sm" style={{ color: '#fff', background: torchOn ? '#f59e0b' : 'rgba(0,0,0,.55)' }} title="Toggle torch"><Zap size={16} /></button>
+            <button onClick={() => setZoom((value) => value >= 2 ? 1 : value + 0.5)} className="btn btn-ghost btn-sm" style={{ color: '#fff', background: 'rgba(0,0,0,.55)' }} title="Zoom"><ZoomIn size={16} /> {zoom.toFixed(1)}x</button>
+          </div>
+        )}
       </div>
 
       <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -308,6 +348,7 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
 
           {overlayState === 'preview' && (
             <>
+              <label className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}><Upload size={16} /> Upload another<input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} /></label>
               <button onClick={retake} className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }}>
                 <RefreshCw size={16} /> Retake
               </button>

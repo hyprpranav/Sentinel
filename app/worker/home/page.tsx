@@ -21,50 +21,54 @@ export default function WorkerHome() {
   const [latestRecord, setLatestRecord] = useState<ExposureRecord | null>(null);
   const [recentScans, setRecentScans] = useState<ExposureRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!user) return;
+    const uid = user.uid;
 
     async function load() {
-      // Find worker by uid
-      const wSnap = await getDocs(
-        query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', user!.uid), limit(1))
-      );
+      try {
+        const wSnap = await getDocs(
+          query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', uid), limit(1))
+        );
 
-      if (wSnap.empty) {
-        // Check if still in requests
-        setLoading(false);
-        return;
-      }
+        if (wSnap.empty) return;
 
-      const wDoc = wSnap.docs[0];
-      const wData = wDoc.data();
-      setWorkerProfile({
-        id: wDoc.id,
-        publicId: wData.publicId,
-        uid: wData.uid,
-        fullName: wData.fullName,
-        employeeId: wData.employeeId,
-        department: wData.department,
-        designation: wData.designation,
-        status: wData.status,
-        qrCodeData: wData.qrCodeData,
-        dosimeterStatus: wData.dosimeterStatus,
-        createdAt: toFirestoreDate(wData.createdAt) ?? new Date(),
-        updatedAt: toFirestoreDate(wData.updatedAt) ?? new Date(),
-      } as Worker);
+        const wDoc = wSnap.docs[0];
+        const wData = wDoc.data();
+        setWorkerProfile({
+          id: wDoc.id,
+          publicId: wData.publicId,
+          uid: wData.uid,
+          fullName: wData.fullName,
+          employeeId: wData.employeeId,
+          department: wData.department,
+          designation: wData.designation,
+          status: wData.status,
+          qrCodeData: wData.qrCodeData,
+          dosimeterStatus: wData.dosimeterStatus,
+          profilePhotoUrl: wData.profilePhotoUrl,
+          createdAt: toFirestoreDate(wData.createdAt) ?? new Date(),
+          updatedAt: toFirestoreDate(wData.updatedAt) ?? new Date(),
+        } as Worker);
 
-      // Get latest exposure records for heatmap
-      const rSnap = await getDocs(
-        query(
-          collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-          where('workerId', '==', wDoc.id),
-          orderBy('createdAt', 'desc'),
-          limit(30)
-        )
-      );
+        let rSnap;
+        try {
+          rSnap = await getDocs(query(
+            collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+            where('workerId', '==', wDoc.id),
+            orderBy('createdAt', 'desc'),
+            limit(30)
+          ));
+        } catch {
+          rSnap = await getDocs(query(
+            collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+            where('workerId', '==', wDoc.id),
+            limit(30)
+          ));
+        }
 
-      if (!rSnap.empty) {
         const records = rSnap.docs.map(doc => {
           const r = doc.data();
           return {
@@ -83,12 +87,16 @@ export default function WorkerHome() {
             status: r.status,
             reviewerRemarks: r.reviewerRemarks,
           } as ExposureRecord;
-        });
-        
+        }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
         setRecentScans(records);
-        setLatestRecord(records[0]);
+        setLatestRecord(records[0] ?? null);
+      } catch (error) {
+        console.error('Worker home load failed:', error);
+        setLoadError('Some exposure data could not be loaded. Your profile is still available.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     load();
@@ -126,6 +134,7 @@ export default function WorkerHome() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {loadError && <div className="alert alert-warning"><Info size={15} /><span>{loadError}</span></div>}
           {/* Worker profile summary */}
           <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{

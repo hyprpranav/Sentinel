@@ -39,6 +39,9 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
           actions={<QuickCameraButton userId={user.uid} role="manager" displayName={displayName} />}
         />
         <main className="main-content">
+          <div style={{ marginBottom: '1rem' }}>
+            <QuickCameraButton userId={user.uid} role="manager" displayName={displayName} variant="card" />
+          </div>
           {children}
         </main>
       </div>

@@ -51,6 +51,9 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
         maxWidth: 540,
         margin: '0 auto',
       }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <QuickCameraButton userId={user.uid} role="worker" displayName={user.displayName} variant="card" />
+        </div>
         {children}
       </main>
 
