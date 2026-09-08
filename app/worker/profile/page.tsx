@@ -9,10 +9,11 @@ import { useRouter } from 'next/navigation';
 import { Worker } from '@/types/worker';
 import { toFirestoreDate, formatDate } from '@/lib/utils/date';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { LogOut, User as UserIcon, Building, Phone, Mail, Hash } from 'lucide-react';
+import { LogOut, User as UserIcon, Building, Phone, Mail, Hash, Upload } from 'lucide-react';
 import { DosimeterBadge } from '@/components/ui/Badge';
 import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay';
 import { getWorkerQRUrl } from '@/lib/qr/generator';
+import { uploadToCloudinary } from '@/lib/cloudinary/config';
 
 export default function WorkerProfilePage() {
   const { user } = useAuthContext();
@@ -21,6 +22,8 @@ export default function WorkerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -79,6 +82,13 @@ export default function WorkerProfilePage() {
     router.push('/login');
   };
 
+  const handlePhoto = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || file.size > 5 * 1024 * 1024) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!worker) return;
@@ -87,6 +97,9 @@ export default function WorkerProfilePage() {
     setSuccess('');
     try {
       const ref = doc(db, COLLECTIONS.WORKERS, worker.id);
+      const profilePhotoUrl = photoFile
+        ? (await uploadToCloudinary(photoFile, 'sentinel/workers')).secure_url
+        : worker.profilePhotoUrl;
       await updateDoc(ref, {
         fullName: formData.fullName,
         phone: formData.phone,
@@ -97,6 +110,7 @@ export default function WorkerProfilePage() {
         dateOfBirth: formData.dateOfBirth,
         guardianName: formData.guardianName,
         guardianContact: formData.guardianContact,
+        profilePhotoUrl,
       });
       setSuccess('Profile updated successfully.');
       setWorker({ ...worker, ...formData });
@@ -192,13 +206,14 @@ export default function WorkerProfilePage() {
       <div className="col-span-1 flex flex-col gap-6">
         <div className="bg-navy-card border border-navy-border shadow-lg rounded-xl p-6 flex flex-col items-center">
           <div className="w-24 h-24 rounded-full bg-navy-bg border-2 border-navy-border flex items-center justify-center overflow-hidden text-2xl font-bold text-gray-500 mb-4">
-            {worker?.profilePhotoUrl ? (
+            {photoPreview || worker?.profilePhotoUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={worker.profilePhotoUrl} alt="Worker" className="w-full h-full object-cover" />
+              <img src={photoPreview || worker?.profilePhotoUrl} alt="Worker" className="w-full h-full object-cover" />
             ) : (
               worker?.fullName.charAt(0)
             )}
           </div>
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}><Upload size={15} /> Upload Profile Photo<input type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} /></label>
           <h2 className="text-xl font-bold mb-1">{worker?.fullName}</h2>
           <div className="flex gap-2 mb-2 mt-4">
             <DosimeterBadge status={worker?.dosimeterStatus ?? 'not_assigned'} />

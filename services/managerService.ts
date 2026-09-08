@@ -46,6 +46,7 @@ export async function getPendingManagerRequests(): Promise<ManagerRequest[]> {
       email: data.email,
       phone: data.phone,
       department: data.department,
+      profilePhotoUrl: data.profilePhotoUrl,
       status: data.status,
       submittedAt: toFirestoreDate(data.submittedAt as Timestamp) ?? new Date(),
     } as ManagerRequest;
@@ -73,6 +74,7 @@ export async function approveManagerRequest(requestId: string, reviewerId: strin
       email: request.email,
       phone: request.phone ?? null,
       department: request.department ?? null,
+      profilePhotoUrl: request.profilePhotoUrl ?? null,
       status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -119,6 +121,7 @@ export async function getPastManagerRequests(): Promise<ManagerRequest[]> {
       email: data.email,
       phone: data.phone,
       department: data.department,
+      profilePhotoUrl: data.profilePhotoUrl,
       status: data.status,
       submittedAt: toFirestoreDate(data.submittedAt as Timestamp) ?? new Date(),
       reviewedBy: data.reviewedBy,

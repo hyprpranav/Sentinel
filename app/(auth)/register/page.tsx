@@ -70,12 +70,22 @@ export default function RegisterPage() {
         const { password: _p, ...requestData } = form;
         await submitWorkerRequest({ ...requestData, uid: user.uid, profilePhotoUrl });
       } else {
+        let profilePhotoUrl: string | undefined;
+        if (photoFile) {
+          try {
+            const result = await uploadToCloudinary(photoFile, 'sentinel/workers');
+            profilePhotoUrl = result.secure_url;
+          } catch (photoErr) {
+            console.warn('Manager photo upload failed, continuing without photo:', photoErr);
+          }
+        }
         await submitManagerRequest({
           uid: user.uid,
           fullName: form.fullName,
           email: form.email,
           phone: form.phone,
           department: form.department,
+          profilePhotoUrl,
         });
       }
 
@@ -211,8 +221,8 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Photo upload — workers only */}
-            {role === 'worker' && (
+            {/* Optional profile photo */}
+            {(role === 'worker' || role === 'manager') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{
                   width: 64, height: 64, borderRadius: '50%',

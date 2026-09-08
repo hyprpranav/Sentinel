@@ -8,8 +8,10 @@ import { logoutUser } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { LogOut, Shield, Mail } from 'lucide-react';
+import { Upload } from 'lucide-react';
+import { uploadToCloudinary } from '@/lib/cloudinary/config';
 
-interface AdminData { displayName?: string; email?: string; role?: string; address?: string; bloodGroup?: string; dateOfBirth?: string; guardianContact?: string; }
+interface AdminData { displayName?: string; email?: string; role?: string; address?: string; bloodGroup?: string; dateOfBirth?: string; guardianContact?: string; profilePhotoUrl?: string; }
 
 export default function AdminProfilePage() {
   const { user } = useAuthContext();
@@ -18,6 +20,8 @@ export default function AdminProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     displayName: '',
@@ -43,6 +47,13 @@ export default function AdminProfilePage() {
     router.push('/login');
   };
 
+  const handlePhoto = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || file.size > 5 * 1024 * 1024) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -51,12 +62,16 @@ export default function AdminProfilePage() {
     setSuccess('');
     try {
       const ref = doc(db, COLLECTIONS.USERS, user.uid);
+      const profilePhotoUrl = photoFile
+        ? (await uploadToCloudinary(photoFile, 'sentinel/workers')).secure_url
+        : adminData?.profilePhotoUrl;
       await updateDoc(ref, {
         displayName: formData.displayName,
         address: formData.address,
         bloodGroup: formData.bloodGroup,
         dateOfBirth: formData.dateOfBirth,
         guardianContact: formData.guardianContact,
+        profilePhotoUrl,
       });
       setSuccess('Profile updated successfully.');
       setAdminData({ ...adminData, ...formData });
@@ -78,6 +93,12 @@ export default function AdminProfilePage() {
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <Shield className="text-blue-500" /> Admin Profile
         </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {photoPreview || adminData?.profilePhotoUrl ? <img src={photoPreview || adminData?.profilePhotoUrl} alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Shield size={24} />}
+          </div>
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}><Upload size={15} /> Upload Profile Photo<input type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} /></label>
+        </div>
 
         {success && <div className="bg-green-500/20 text-green-500 p-3 rounded mb-6 text-sm">{success}</div>}
 

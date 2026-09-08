@@ -20,6 +20,7 @@ export interface ManagerRequest {
   email: string;
   phone?: string;
   department?: string;
+  profilePhotoUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: Date;
   reviewedBy?: string;
