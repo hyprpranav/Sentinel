@@ -1,14 +1,21 @@
 // lib/qr/generator.ts
 import QRCode from 'qrcode';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+const PRODUCTION_APP_URL = 'https://sentineltrack.vercel.app';
+
+function getAppUrl(): string {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || PRODUCTION_APP_URL;
+}
 
 /**
  * Generate a public worker QR code that links to the emergency ID page.
  * The QR encodes a URL, NOT sensitive personal data.
  */
 export function getWorkerQRUrl(publicId: string): string {
-  return `${APP_URL}/worker/${publicId}`;
+  return `${getAppUrl()}/worker/${encodeURIComponent(publicId)}`;
 }
 
 /**

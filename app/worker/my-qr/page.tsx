@@ -5,13 +5,11 @@ import { useAuthContext } from '@/context/AuthContext';
 import { query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
-import { generateQRDataUrl } from '@/lib/qr/generator';
+import { generateQRDataUrl, getWorkerQRUrl } from '@/lib/qr/generator';
 import { Worker } from '@/types/worker';
 import { toFirestoreDate } from '@/lib/utils/date';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { Download, Info, QrCode } from 'lucide-react';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 export default function MyQRPage() {
   const { user } = useAuthContext();
@@ -41,7 +39,7 @@ export default function MyQRPage() {
           updatedAt: toFirestoreDate(d.updatedAt) ?? new Date(),
         };
         setWorker(w);
-        const url = await generateQRDataUrl(`${APP_URL}/worker/${w.publicId}`, 200);
+        const url = await generateQRDataUrl(getWorkerQRUrl(w.publicId), 200);
         setQrDataUrl(url);
       }
     }).finally(() => setLoading(false));
