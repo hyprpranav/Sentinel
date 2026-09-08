@@ -53,7 +53,8 @@ export default function ManagerDashboard() {
       {/* Primary CTA — Scan */}
       <Link href="/manager/scan" style={{ display: 'block', textDecoration: 'none', marginBottom: '1.75rem' }}>
         <div style={{
-          background: 'var(--color-navy)',
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
           borderRadius: 'var(--radius-xl)',
           padding: '1.5rem',
           display: 'flex',
@@ -70,17 +71,17 @@ export default function ManagerDashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <ScanLine size={26} color="#fff" aria-hidden="true" />
+            <ScanLine size={26} style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: '1.0625rem', marginBottom: '0.125rem' }}>
+            <div style={{ color: 'var(--color-text-primary)', fontWeight: 700, fontSize: '1.0625rem', marginBottom: '0.125rem' }}>
               Scan Dosimeter
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem' }}>
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
               Scan a worker QR code and capture sensing strip
             </div>
           </div>
-          <ChevronRight color="rgba(255,255,255,0.6)" size={20} />
+          <ChevronRight style={{ color: 'var(--color-text-muted)' }} size={20} />
         </div>
       </Link>
 
