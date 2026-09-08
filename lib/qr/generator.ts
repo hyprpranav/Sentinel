@@ -7,7 +7,11 @@ function getAppUrl(): string {
   if (typeof window !== 'undefined' && window.location.origin) {
     return window.location.origin;
   }
-  return process.env.NEXT_PUBLIC_APP_URL || PRODUCTION_APP_URL;
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+  if (!configuredUrl || configuredUrl === 'https://sentinel.vercel.app') {
+    return PRODUCTION_APP_URL;
+  }
+  return configuredUrl;
 }
 
 /**
