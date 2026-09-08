@@ -77,8 +77,11 @@ export async function getWorkersByManager(managerId: string): Promise<Worker[]> 
 }
 
 export async function submitWorkerRequest(data: Omit<WorkerRequest, 'id' | 'status' | 'submittedAt'>): Promise<string> {
+  const requestData = Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined)
+  );
   const ref = await addDoc(collection(db, COLLECTIONS.WORKER_REQUESTS), {
-    ...data,
+    ...requestData,
     status: 'pending',
     submittedAt: serverTimestamp(),
   });
