@@ -47,15 +47,26 @@ function docToWorker(id: string, data: Record<string, unknown>): Worker {
 }
 
 export async function getWorkerByPublicId(publicId: string): Promise<Worker | null> {
-  const q = query(
-    collection(db, COLLECTIONS.WORKERS),
-    where('publicId', '==', publicId),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return docToWorker(d.id, d.data() as Record<string, unknown>);
+  const cleanedId = decodeURIComponent(publicId).trim().split('/').pop()?.toUpperCase() ?? '';
+  const candidates = new Set([cleanedId]);
+  const match = cleanedId.match(/^(SW)(\d+)$/);
+  if (match) {
+    candidates.add(`${match[1]}${match[2].padStart(4, '0')}`);
+    candidates.add(`${match[1]}${match[2].replace(/^0+/, '') || '0'}`);
+  }
+
+  for (const candidate of candidates) {
+    const snap = await getDocs(query(
+      collection(db, COLLECTIONS.WORKERS),
+      where('publicId', '==', candidate),
+      limit(1)
+    ));
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return docToWorker(d.id, d.data() as Record<string, unknown>);
+    }
+  }
+  return null;
 }
 
 export async function getWorkerById(id: string): Promise<Worker | null> {

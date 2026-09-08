@@ -4,7 +4,8 @@ import { getWorkerByPublicId } from '@/services/workerService';
 import { getPublicWorkerExposure } from '@/services/exposureService';
 import { SentinelLogo } from '@/components/layout/SentinelLogo';
 import { WorkerStatusBadge, DosimeterBadge } from '@/components/ui/Badge';
-import { ShieldAlert, User, Building, QrCode } from 'lucide-react';
+import { ShieldAlert, User, Building, QrCode, Phone, MapPin, HeartPulse } from 'lucide-react';
+import { EXPOSURE_THRESHOLDS, getDoseCategory } from '@/config/exposureThresholds';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,8 @@ export default async function PublicWorkerProfile({ params }: { params: Promise<
   const exposures = await getPublicWorkerExposure(worker.id).catch(() => []);
   const totalDose = exposures.reduce((sum, record) => sum + record.estimatedDosePpmH, 0);
   const averageDose = exposures.length ? totalDose / exposures.length : 0;
+  const exposurePercentage = Math.min(100, (totalDose / EXPOSURE_THRESHOLDS.CUMULATIVE_HIGH_PPMH) * 100);
+  const exposureCategory = getDoseCategory(totalDose);
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -87,6 +90,18 @@ export default async function PublicWorkerProfile({ params }: { params: Promise<
                 <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Blood Group</p><p style={{ fontWeight: 500 }}>{worker.bloodGroup}</p></div>
               </div>
             )}
+            {worker.phone && (
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <Phone size={18} style={{ color: 'var(--color-text-muted)' }} />
+                <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Contact Number</p><p style={{ fontWeight: 500 }}>{worker.phone}</p></div>
+              </div>
+            )}
+            {worker.address && (
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <MapPin size={18} style={{ color: 'var(--color-text-muted)' }} />
+                <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Address</p><p style={{ fontWeight: 500 }}>{worker.address}</p></div>
+              </div>
+            )}
             {worker.guardianName && worker.guardianContact && (
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <User size={18} style={{ color: 'var(--color-text-muted)' }} />
@@ -102,6 +117,14 @@ export default async function PublicWorkerProfile({ params }: { params: Promise<
             <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Recorded scans</p><strong>{exposures.length}</strong></div>
             <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Total exposure</p><strong>{totalDose.toFixed(2)} ppm·h</strong></div>
             <div><p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Average</p><strong>{averageDose.toFixed(2)} ppm·h</strong></div>
+            <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                <span>Exposure level</span><strong style={{ color: exposureCategory.colour }}>{exposurePercentage.toFixed(0)}% · {exposureCategory.label}</strong>
+              </div>
+              <div style={{ height: 8, background: 'var(--color-surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ width: `${exposurePercentage}%`, height: '100%', background: exposureCategory.colour, borderRadius: 99 }} />
+              </div>
+            </div>
           </div>
         </div>
 
