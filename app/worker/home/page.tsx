@@ -7,17 +7,19 @@ import { db } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { ExposureRecord } from '@/types/exposure';
 import { Worker } from '@/types/worker';
-import { formatDose, formatDuration } from '@/lib/utils/formatting';
+import { formatDuration } from '@/lib/utils/formatting';
 import { formatDateTime, getGreeting, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Activity, Shield, Info } from 'lucide-react';
+import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
+import { Activity, Info } from 'lucide-react';
 
 export default function WorkerHome() {
   const { user, displayName } = useAuthContext();
   const [workerProfile, setWorkerProfile] = useState<Worker | null>(null);
   const [latestRecord, setLatestRecord] = useState<ExposureRecord | null>(null);
+  const [recentScans, setRecentScans] = useState<ExposureRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,32 +54,39 @@ export default function WorkerHome() {
         updatedAt: toFirestoreDate(wData.updatedAt) ?? new Date(),
       } as Worker);
 
-      // Get latest exposure record
+      // Get latest exposure records for heatmap
       const rSnap = await getDocs(
         query(
           collection(db, COLLECTIONS.EXPOSURE_RECORDS),
           where('workerId', '==', wDoc.id),
           orderBy('createdAt', 'desc'),
-          limit(1)
+          limit(30)
         )
       );
 
       if (!rSnap.empty) {
-        const r = rSnap.docs[0].data();
-        setLatestRecord({
-          id: rSnap.docs[0].id,
-          workerId: r.workerId,
-          managerId: r.managerId,
-          timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
-          shift: r.shift,
-          estimatedDosePpmH: r.estimatedDosePpmH,
-          monitoringDuration: r.monitoringDuration,
-          estimatedAverageExposure: r.estimatedAverageExposure,
-          calibrationModelVersion: r.calibrationModelVersion,
-          dosimeterStatus: r.dosimeterStatus,
-          isPublicVisible: r.isPublicVisible,
-          createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
-        } as ExposureRecord);
+        const records = rSnap.docs.map(doc => {
+          const r = doc.data();
+          return {
+            id: doc.id,
+            workerId: r.workerId,
+            managerId: r.managerId,
+            timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
+            shift: r.shift,
+            estimatedDosePpmH: r.estimatedDosePpmH,
+            monitoringDuration: r.monitoringDuration,
+            estimatedAverageExposure: r.estimatedAverageExposure,
+            calibrationModelVersion: r.calibrationModelVersion,
+            dosimeterStatus: r.dosimeterStatus,
+            isPublicVisible: r.isPublicVisible,
+            createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
+            status: r.status,
+            reviewerRemarks: r.reviewerRemarks,
+          } as ExposureRecord;
+        });
+        
+        setRecentScans(records);
+        setLatestRecord(records[0]);
       }
       setLoading(false);
     }
@@ -128,7 +137,10 @@ export default function WorkerHome() {
               flexShrink: 0, overflow: 'hidden',
             }}>
               {workerProfile.profilePhotoUrl
-                ? <img src={workerProfile.profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={workerProfile.profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )
                 : workerProfile.fullName.charAt(0)}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -145,6 +157,8 @@ export default function WorkerHome() {
             </div>
             <DosimeterBadge status={workerProfile.dosimeterStatus} />
           </div>
+
+          <ActivityHeatmap records={recentScans} days={30} />
 
           {/* Latest exposure record */}
           {latestRecord ? (

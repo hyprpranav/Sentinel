@@ -11,13 +11,12 @@ import { formatDateTime, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Activity, Shield } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export default function MyExposurePage() {
   const { user } = useAuthContext();
   const [records, setRecords] = useState<ExposureRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [workerId, setWorkerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -28,7 +27,6 @@ export default function MyExposurePage() {
         );
         if (wSnap.empty) { setLoading(false); return; }
         const wId = wSnap.docs[0].id;
-        setWorkerId(wId);
 
         const rSnap = await getDocs(
           query(

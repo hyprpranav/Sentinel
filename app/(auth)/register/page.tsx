@@ -59,8 +59,13 @@ export default function RegisterPage() {
       if (role === 'worker') {
         let profilePhotoUrl: string | undefined;
         if (photoFile) {
-          const result = await uploadToCloudinary(photoFile, 'sentinel/workers');
-          profilePhotoUrl = result.secure_url;
+          try {
+            const result = await uploadToCloudinary(photoFile, 'sentinel/workers');
+            profilePhotoUrl = result.secure_url;
+          } catch (photoErr) {
+            console.warn('Photo upload failed, continuing without photo:', photoErr);
+            // Non-fatal — submit request without photo
+          }
         }
         const { password: _p, ...requestData } = form;
         await submitWorkerRequest({ ...requestData, uid: user.uid, profilePhotoUrl });
@@ -77,11 +82,20 @@ export default function RegisterPage() {
       await logoutUser();
       setSuccess(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
+      console.error('Registration error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('email-already-in-use')) {
-        setError('An account already exists for this email.');
+        setError('An account already exists for this email. Please use a different email or sign in.');
+      } else if (msg.includes('invalid-email')) {
+        setError('Please enter a valid email address.');
+      } else if (msg.includes('weak-password')) {
+        setError('Password is too weak. Please use at least 6 characters.');
+      } else if (msg.includes('permission-denied')) {
+        setError('Access denied. Please check your internet connection and try again.');
+      } else if (msg.includes('network') || msg.includes('unavailable')) {
+        setError('Network error. Please check your connection and try again.');
       } else {
-        setError('Submission failed. Please try again.');
+        setError(`Submission failed: ${msg || 'Please try again.'}`);
       }
     } finally {
       setLoading(false);

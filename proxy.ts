@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export default function proxy(request: NextRequest) {
+export default function proxy(_request: NextRequest) {
   // Allow everything — role-based redirects are handled in each layout's
   // useEffect (AdminShell, ManagerShell, WorkerShell) via Firebase client auth.
   return NextResponse.next();

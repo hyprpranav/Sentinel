@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, UserCheck, ClipboardList,
-  BarChart2, Shield, Settings, FileText, ChevronLeft,
-  Activity, Sliders,
+  BarChart2, Shield, Settings, FileText,
+  Sliders,
 } from 'lucide-react';
 import { SentinelLogo } from './SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';

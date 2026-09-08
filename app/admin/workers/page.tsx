@@ -1,38 +1,90 @@
 'use client';
 // app/(admin)/workers/page.tsx
-import { useEffect, useState } from 'react';
-import { getAllWorkers } from '@/services/workerService';
+import { useEffect, useState, useMemo } from 'react';
+import { getAllWorkers, deleteWorker, deleteAllWorkers } from '@/services/workerService';
 import { Worker } from '@/types/worker';
 import { formatDate } from '@/lib/utils/date';
 import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { Users, Search } from 'lucide-react';
+import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
+import { Users, Search, Trash2 } from 'lucide-react';
 
 export default function AdminWorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [filtered, setFiltered] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
 
   useEffect(() => {
-    getAllWorkers().then((w) => { setWorkers(w); setFiltered(w); }).finally(() => setLoading(false));
+    let cancelled = false;
+    const run = async () => {
+      if (!cancelled) setLoading(true);
+      try {
+        const w = await getAllWorkers();
+        if (!cancelled) setWorkers(w);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(workers.filter((w) =>
+    return workers.filter((w) =>
       w.fullName.toLowerCase().includes(q) ||
       w.department.toLowerCase().includes(q) ||
       w.publicId.toLowerCase().includes(q)
-    ));
+    );
   }, [search, workers]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to deactivate this worker?')) return;
+    try {
+      await deleteWorker(id);
+      setWorkers((prev) => prev.filter((w) => w.id !== id));
+    } catch (e) {
+      alert('Failed to deactivate worker');
+      console.error(e);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    await deleteAllWorkers();
+    setWorkers([]);
+  };
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Workers</h1>
-        <p>All registered workers in the system</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1>Workers</h1>
+          <p>All registered workers in the system</p>
+        </div>
+        <button
+          onClick={() => setShowDeleteAll(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.625rem 1rem',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            borderRadius: '0.5rem',
+            color: '#ef4444',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.22)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
+        >
+          <Trash2 size={15} /> Delete All Workers
+        </button>
       </div>
 
       <div className="card card-flush">
@@ -77,6 +129,7 @@ export default function AdminWorkersPage() {
                   <th>Status</th>
                   <th>Dosimeter</th>
                   <th>Registered</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,7 +137,7 @@ export default function AdminWorkersPage() {
                   <tr key={w.id}>
                     <td>
                       <div style={{ fontWeight: 500 }}>{w.fullName}</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{w.publicId}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{w.email}</div>
                     </td>
                     <td style={{ fontSize: '0.875rem' }}>
                       <div>{w.department}</div>
@@ -100,6 +153,16 @@ export default function AdminWorkersPage() {
                     <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                       {formatDate(w.createdAt)}
                     </td>
+                    <td>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleDelete(w.id)}
+                        disabled={w.status === 'inactive'}
+                        style={{ color: '#ef4444' }}
+                      >
+                        Deactivate
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -107,6 +170,15 @@ export default function AdminWorkersPage() {
           </div>
         )}
       </div>
+
+      <PinDeleteDialog
+        isOpen={showDeleteAll}
+        onClose={() => setShowDeleteAll(false)}
+        onConfirm={handleDeleteAll}
+        title="Delete All Workers"
+        description="This will permanently delete all worker records, their user accounts, and all associated requests from the database."
+        danger="This action cannot be undone. All worker data will be permanently removed."
+      />
     </div>
   );
 }

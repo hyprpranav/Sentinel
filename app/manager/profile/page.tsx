@@ -1,24 +1,49 @@
 'use client';
-// app/(manager)/profile/page.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { getUserData } from '@/lib/firebase/auth';
-import { UserRole } from '@/types/user';
-import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { User as UserIcon, LogOut, CheckCircle, Clock } from 'lucide-react';
-import { auth } from '@/lib/firebase/config';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase/config';
+import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { logoutUser } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
+import { LoadingSpinner } from '@/components/ui/LoadingScreen';
+import { LogOut, User as UserIcon, Building, Phone, Mail, Hash } from 'lucide-react';
+
+interface ManagerData {
+  fullName?: string;
+  phone?: string;
+  department?: string;
+  email?: string;
+  publicId?: string;
+}
 
 export default function ManagerProfilePage() {
-  const { user, role, displayName } = useAuthContext();
+  const { user } = useAuthContext();
   const router = useRouter();
+  const [manager, setManager] = useState<ManagerData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
+
+  const [formData, setFormData] = useState({
+    fullName: '',
+    phone: '',
+    department: '',
+  });
 
   useEffect(() => {
     if (!user) return;
-    getUserData(user.uid).then(setData).finally(() => setLoading(false));
+    getDoc(doc(db, COLLECTIONS.MANAGERS, user.uid)).then((snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setManager(d);
+        setFormData({
+          fullName: d.fullName || '',
+          phone: d.phone || '',
+          department: d.department || '',
+        });
+      }
+    }).finally(() => setLoading(false));
   }, [user]);
 
   const handleLogout = async () => {
@@ -26,63 +51,90 @@ export default function ManagerProfilePage() {
     router.push('/login');
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    setSaving(true);
+    setSuccess('');
+    try {
+      const ref = doc(db, COLLECTIONS.MANAGERS, user.uid);
+      await updateDoc(ref, {
+        fullName: formData.fullName,
+        phone: formData.phone,
+        department: formData.department,
+      });
+      setSuccess('Profile updated successfully.');
+      setManager({ ...manager, ...formData });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><LoadingSpinner size={24} /></div>;
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>Profile & Settings</h1>
-        <p>Manage your account preferences</p>
+    <div className="max-w-3xl mx-auto">
+      <div className="bg-navy-card border border-navy-border shadow-lg rounded-xl p-8 mb-6">
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <UserIcon className="text-blue-500" /> Manager Profile
+        </h2>
+
+        {success && <div className="bg-green-500/20 text-green-500 p-3 rounded mb-6 text-sm">{success}</div>}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300 flex items-center gap-2">
+                <Hash size={14} /> Manager ID (Read-only)
+              </label>
+              <input type="text" className="input-field w-full bg-navy-bg cursor-not-allowed opacity-70" value={manager?.publicId || ''} disabled />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300 flex items-center gap-2">
+                <Mail size={14} /> Email (Read-only)
+              </label>
+              <input type="text" className="input-field w-full bg-navy-bg cursor-not-allowed opacity-70" value={auth.currentUser?.email || manager?.email || 'No email associated'} disabled />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-300">Full Name</label>
+            <input type="text" className="input-field w-full" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} required />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300 flex items-center gap-2">
+                <Phone size={14} /> Phone
+              </label>
+              <input type="tel" className="input-field w-full" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300 flex items-center gap-2">
+                <Building size={14} /> Department
+              </label>
+              <input type="text" className="input-field w-full" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} />
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <button type="submit" disabled={saving} className="btn btn-primary px-8">
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </div>
 
-      <div className="card" style={{ maxWidth: 600, padding: '2rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'var(--color-surface-2)', border: '2px solid var(--color-border)',
-          margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--color-text-muted)', fontSize: '2rem', fontWeight: 700,
-        }}>
-          {displayName?.charAt(0) ?? 'M'}
-        </div>
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{displayName}</h2>
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
-          {auth.currentUser?.email}
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-          <span className="badge badge-blue">
-            {role === 'admin' ? 'Master Admin' : 'Manager'}
-          </span>
-          <span className="badge badge-green">
-            <CheckCircle size={12} style={{ marginRight: 4 }} /> Active
-          </span>
-        </div>
-      </div>
-
-      <div className="card" style={{ maxWidth: 600, marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '0.9375rem', marginBottom: '1rem' }}>Account Details</h3>
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Account ID</p>
-            <p style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>{user?.uid}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Created At</p>
-            <p style={{ fontSize: '0.875rem' }}>{user?.metadata.creationTime}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Last Sign In</p>
-            <p style={{ fontSize: '0.875rem' }}>{user?.metadata.lastSignInTime}</p>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 600, display: 'flex', justifyContent: 'flex-start' }}>
-        <button className="btn btn-outline" onClick={handleLogout}>
-          <LogOut size={16} /> Sign Out
-        </button>
-      </div>
+      <button className="btn btn-outline w-full justify-center mb-6" onClick={handleLogout}>
+        <LogOut size={16} /> Sign Out
+      </button>
     </div>
   );
 }

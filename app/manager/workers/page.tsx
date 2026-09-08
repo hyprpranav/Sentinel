@@ -1,35 +1,34 @@
 'use client';
 // app/(manager)/workers/page.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkersByManager, getAllWorkers } from '@/services/workerService';
 import { Worker } from '@/types/worker';
 import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { formatDate, timeAgo } from '@/lib/utils/date';
+import { timeAgo } from '@/lib/utils/date';
 import { Users, Search } from 'lucide-react';
 
 export default function ManagerWorkersPage() {
   const { user, role } = useAuthContext();
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [filtered, setFiltered] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!user) return;
     const fn = role === 'admin' ? getAllWorkers : () => getWorkersByManager(user.uid);
-    fn().then((w) => { setWorkers(w); setFiltered(w); }).finally(() => setLoading(false));
+    fn().then((w) => { setWorkers(w); }).finally(() => setLoading(false));
   }, [user, role]);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(workers.filter((w) =>
+    return workers.filter((w) =>
       w.fullName.toLowerCase().includes(q) ||
       w.department.toLowerCase().includes(q) ||
       w.publicId.toLowerCase().includes(q)
-    ));
+    );
   }, [search, workers]);
 
   return (
@@ -86,7 +85,10 @@ export default function ManagerWorkersPage() {
                           overflow: 'hidden', flexShrink: 0,
                         }}>
                           {w.profilePhotoUrl
-                            ? <img src={w.profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={w.profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              )
                             : w.fullName.charAt(0)}
                         </div>
                         <div>

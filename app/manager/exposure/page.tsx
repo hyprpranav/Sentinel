@@ -1,6 +1,6 @@
 'use client';
 // app/(manager)/exposure/page.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { query, collection, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
@@ -16,7 +16,7 @@ import { Activity, Search } from 'lucide-react';
 export default function ManagerExposurePage() {
   const { user } = useAuthContext();
   const [records, setRecords] = useState<ExposureRecord[]>([]);
-  const [filtered, setFiltered] = useState<ExposureRecord[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -53,7 +53,7 @@ export default function ManagerExposurePage() {
           } as ExposureRecord);
         });
         setRecords(loaded);
-        setFiltered(loaded);
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -63,12 +63,12 @@ export default function ManagerExposurePage() {
     load();
   }, [user]);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(records.filter((r) =>
+    return records.filter((r) =>
       (r.workerName && r.workerName.toLowerCase().includes(q)) ||
       (r.workerPublicId && r.workerPublicId.toLowerCase().includes(q))
-    ));
+    );
   }, [search, records]);
 
   return (

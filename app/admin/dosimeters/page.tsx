@@ -1,6 +1,6 @@
 'use client';
 // app/(admin)/dosimeters/page.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getAllWorkers, updateDosimeterStatus } from '@/services/workerService';
 import { Worker } from '@/types/worker';
 import { DosimeterBadge } from '@/components/ui/Badge';
@@ -13,32 +13,34 @@ import { useAuthContext } from '@/context/AuthContext';
 export default function AdminDosimetersPage() {
   const { user, displayName } = useAuthContext();
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [filtered, setFiltered] = useState<Worker[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [processing, setProcessing] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const w = await getAllWorkers();
-      setWorkers(w);
-      setFiltered(w);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { loadData(); }, []);
-
   useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      try {
+        const w = await getAllWorkers();
+        if (!cancelled) setWorkers(w);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(workers.filter((w) =>
+    return workers.filter((w) =>
       w.fullName.toLowerCase().includes(q) ||
       w.publicId.toLowerCase().includes(q)
-    ));
+    );
   }, [search, workers]);
 
   const handleIssueNew = async (w: Worker) => {
@@ -55,7 +57,7 @@ export default function AdminDosimetersPage() {
         targetName: w.fullName,
         details: { action: 'issued_new_dosimeter' },
       });
-      await loadData();
+      setWorkers(await getAllWorkers());
     } catch (err) {
       console.error(err);
     } finally {
@@ -75,7 +77,7 @@ export default function AdminDosimetersPage() {
         <div>
           <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Manual Replacement Cycle</strong>
           <span style={{ fontSize: '0.8125rem' }}>
-            When a worker's dosimeter strip is physically replaced, click "Issue Replacement" to reset their digital status to Valid. This tracks the physical pad lifecycle.
+            When a worker&apos;s dosimeter strip is physically replaced, click &quot;Issue Replacement&quot; to reset their digital status to Valid. This tracks the physical pad lifecycle.
           </span>
         </div>
       </div>

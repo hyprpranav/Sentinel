@@ -188,3 +188,102 @@ export async function updateDosimeterStatus(
     updatedAt: serverTimestamp(),
   });
 }
+
+export async function getPastWorkerRequests(): Promise<WorkerRequest[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, COLLECTIONS.WORKER_REQUESTS),
+      where('status', 'in', ['approved', 'rejected']),
+      orderBy('submittedAt', 'desc'),
+      limit(50)
+    )
+  );
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      fullName: data.fullName,
+      department: data.department,
+      designation: data.designation,
+      email: data.email,
+      phone: data.phone,
+      profilePhotoUrl: data.profilePhotoUrl,
+      status: data.status,
+      submittedAt: toFirestoreDate(data.submittedAt) ?? new Date(),
+      reviewedBy: data.reviewedBy,
+      reviewedAt: toFirestoreDate(data.reviewedAt),
+      rejectionReason: data.rejectionReason,
+    } as WorkerRequest;
+  });
+}
+
+export async function deleteWorker(workerId: string): Promise<void> {
+  const workerSnap = await getDoc(doc(db, COLLECTIONS.WORKERS, workerId));
+  if (!workerSnap.exists()) throw new Error('Worker not found');
+  const workerData = workerSnap.data();
+
+  const batch = [];
+  batch.push(
+    updateDoc(doc(db, COLLECTIONS.WORKERS, workerId), {
+      status: 'inactive',
+      updatedAt: serverTimestamp(),
+    })
+  );
+
+  if (workerData.uid) {
+    batch.push(
+      updateDoc(doc(db, COLLECTIONS.USERS, workerData.uid), {
+        isActive: false,
+        updatedAt: serverTimestamp(),
+      })
+    );
+  }
+
+  await Promise.all(batch);
+}
+
+export async function deleteAllWorkers(): Promise<number> {
+  const { writeBatch } = await import('firebase/firestore');
+  
+  // 1. Delete all worker docs
+  const snap = await getDocs(collection(db, COLLECTIONS.WORKERS));
+  const chunks: typeof snap.docs[] = [];
+  for (let i = 0; i < snap.docs.length; i += 200) {
+    chunks.push(snap.docs.slice(i, i + 200));
+  }
+  let deleted = 0;
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    for (const d of chunk) {
+      batch.delete(d.ref);
+      deleted++;
+    }
+    await batch.commit();
+  }
+
+  // 2. Delete all users with role 'worker'
+  const userSnap = await getDocs(query(collection(db, COLLECTIONS.USERS), where('role', '==', 'worker')));
+  const userChunks: typeof userSnap.docs[] = [];
+  for (let i = 0; i < userSnap.docs.length; i += 200) {
+    userChunks.push(userSnap.docs.slice(i, i + 200));
+  }
+  for (const chunk of userChunks) {
+    const batch = writeBatch(db);
+    for (const d of chunk) {
+      batch.delete(d.ref);
+      deleted++;
+    }
+    await batch.commit();
+  }
+
+  // 3. Delete all worker requests
+  const reqSnap = await getDocs(collection(db, COLLECTIONS.WORKER_REQUESTS));
+  if (!reqSnap.empty) {
+    const batch = writeBatch(db);
+    reqSnap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  return deleted;
+}
+

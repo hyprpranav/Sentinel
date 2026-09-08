@@ -32,6 +32,8 @@ export interface ExposureRecord {
   calibrationModelVersion: string;
   dosimeterStatus: DosimeterStatus;
   notes?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewerRemarks?: string;
   isPublicVisible: boolean;
   createdAt: Date;
 }

@@ -7,37 +7,50 @@ import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { AppUser } from '@/types/user';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { UserCheck, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
+import { deleteAllManagers } from '@/services/managerService';
+import { UserCheck, Shield, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 
 export default function AdminManagersPage() {
   const [managers, setManagers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
 
-  const loadManagers = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      try {
+        const snap = await getDocs(query(collection(db, COLLECTIONS.USERS), where('role', 'in', ['manager', 'admin'])));
+        const data: AppUser[] = [];
+        snap.forEach(d => data.push({ uid: d.id, ...d.data() } as AppUser));
+        if (!cancelled) setManagers(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  const refresh = () => {
     setLoading(true);
-    try {
-      const snap = await getDocs(query(collection(db, COLLECTIONS.USERS), where('role', 'in', ['manager', 'admin'])));
+    getDocs(query(collection(db, COLLECTIONS.USERS), where('role', 'in', ['manager', 'admin']))).then((snap) => {
       const data: AppUser[] = [];
       snap.forEach(d => data.push({ uid: d.id, ...d.data() } as AppUser));
       setManagers(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadManagers(); }, []);
-
   const toggleStatus = async (m: AppUser) => {
-    if (m.role === 'admin') return; // Cannot disable admin from here
+    if (m.role === 'admin') return;
     setProcessing(m.uid);
     try {
-      await updateDoc(doc(db, COLLECTIONS.USERS, m.uid), {
-        isActive: !m.isActive
-      });
-      loadManagers();
+      await updateDoc(doc(db, COLLECTIONS.USERS, m.uid), { isActive: !m.isActive });
+      refresh();
     } catch (err) {
       console.error(err);
     } finally {
@@ -45,11 +58,39 @@ export default function AdminManagersPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    await deleteAllManagers();
+    // Refresh to keep only admin
+    refresh();
+  };
+
   return (
     <div>
-      <div className="page-header">
-        <h1>Manager Directory</h1>
-        <p>Authorized scanning personnel and their account status</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1>Manager Directory</h1>
+          <p>Authorized scanning personnel and their account status</p>
+        </div>
+        <button
+          onClick={() => setShowDeleteAll(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.625rem 1rem',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            borderRadius: '0.5rem',
+            color: '#ef4444',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.22)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
+        >
+          <Trash2 size={15} /> Delete All Managers
+        </button>
       </div>
 
       <div className="card card-flush">
@@ -76,7 +117,7 @@ export default function AdminManagersPage() {
                     <td style={{ fontSize: '0.875rem' }}>{m.email}</td>
                     <td>
                       {m.role === 'admin' ? (
-                        <span className="badge badge-navy"><Shield size={12} style={{ marginRight: 4 }} /> Master Admin</span>
+                        <span className="badge badge-navy"><Shield size={12} style={{ marginRight: 4 }} />Master Admin</span>
                       ) : (
                         <span className="badge badge-blue">Manager</span>
                       )}
@@ -106,6 +147,15 @@ export default function AdminManagersPage() {
           </div>
         )}
       </div>
+
+      <PinDeleteDialog
+        isOpen={showDeleteAll}
+        onClose={() => setShowDeleteAll(false)}
+        onConfirm={handleDeleteAll}
+        title="Delete All Managers"
+        description="This will permanently delete all manager records and their user accounts from the database. Admin account will not be affected."
+        danger="This action cannot be undone. All manager data will be permanently removed."
+      />
     </div>
   );
 }

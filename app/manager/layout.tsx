@@ -6,6 +6,7 @@ import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { ManagerSidebar } from '@/components/layout/ManagerSidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { QuickCameraButton } from '@/components/ui/QuickCameraButton';
 
 function ManagerShell({ children }: { children: React.ReactNode }) {
   const { user, role, loading, displayName } = useAuthContext();
@@ -35,6 +36,7 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
         <TopBar
           onMenuClick={() => setSidebarOpen(true)}
           greeting={displayName ? `Manager — ${displayName}` : 'Manager'}
+          actions={<QuickCameraButton userId={user.uid} role="manager" displayName={displayName} />}
         />
         <main className="main-content">
           {children}

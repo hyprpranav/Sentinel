@@ -4,7 +4,6 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';

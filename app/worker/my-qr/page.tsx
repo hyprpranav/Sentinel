@@ -11,6 +11,8 @@ import { toFirestoreDate } from '@/lib/utils/date';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { Download, Info, QrCode } from 'lucide-react';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
 export default function MyQRPage() {
   const { user } = useAuthContext();
   const [worker, setWorker] = useState<Worker | null>(null);
@@ -18,7 +20,7 @@ export default function MyQRPage() {
   const [loading, setLoading] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +54,7 @@ export default function MyQRPage() {
     try {
       const { default: html2canvas } = await import('html2canvas');
       if (!cardRef.current) return;
-      const canvas = await html2canvas(cardRef.current, { scale: 3, backgroundColor: '#ffffff' } as any);
+      const canvas = await html2canvas(cardRef.current, { scale: 3, backgroundColor: '#ffffff' } as Record<string, unknown>);
       const link = document.createElement('a');
       link.download = `SENTINEL-ID-${worker.publicId}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -111,6 +113,7 @@ export default function MyQRPage() {
         </div>
         {qrDataUrl && (
           <div style={{ flexShrink: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qrDataUrl}
               alt={`QR code for ${worker.publicId}`}

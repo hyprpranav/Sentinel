@@ -7,6 +7,7 @@ import { WorkerBottomNav } from '@/components/layout/WorkerBottomNav';
 import { SentinelLogo } from '@/components/layout/SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { QuickCameraButton } from '@/components/ui/QuickCameraButton';
 
 function WorkerShell({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuthContext();
@@ -36,7 +37,10 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
         zIndex: 30,
       }}>
         <SentinelLogo size="sm" />
-        <ThemeToggle />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <QuickCameraButton userId={user.uid} role="worker" displayName={user.displayName} />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main style={{

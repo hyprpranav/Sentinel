@@ -38,6 +38,8 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
     calibrationModelVersion: data.calibrationModelVersion as string,
     dosimeterStatus: data.dosimeterStatus as ExposureRecord['dosimeterStatus'],
     notes: data.notes as string | undefined,
+    status: (data.status as ExposureRecord['status']) || 'pending',
+    reviewerRemarks: data.reviewerRemarks as string | undefined,
     isPublicVisible: data.isPublicVisible as boolean ?? false,
     createdAt: toFirestoreDate(data.createdAt as Timestamp) ?? new Date(),
   };
@@ -126,4 +128,35 @@ export async function getPublicWorkerExposure(workerId: string): Promise<Exposur
     )
   );
   return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+}
+
+export async function getPendingScans(managerId?: string): Promise<ExposureRecord[]> {
+  const q = managerId
+    ? query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('managerId', '==', managerId),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'desc')
+      )
+    : query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'desc')
+      );
+
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+}
+
+export async function updateScanStatus(
+  scanId: string,
+  status: 'approved' | 'rejected',
+  remarks: string
+): Promise<void> {
+  const ref = doc(db, COLLECTIONS.EXPOSURE_RECORDS, scanId);
+  await updateDoc(ref, {
+    status,
+    reviewerRemarks: remarks,
+    updatedAt: serverTimestamp(),
+  });
 }

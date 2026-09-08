@@ -19,6 +19,7 @@
     --color-text-muted: #94a3b8;
 
     --color-navy: #0f172a;
+    --color-navy-content: #ffffff;
     --color-navy-mid: #1e293b;
     --color-navy-light: #334155;
 
@@ -66,6 +67,7 @@
     --color-text-muted: #475569;
 
     --color-navy: #f1f5f9;
+    --color-navy-content: #0f172a;
     --color-navy-mid: #e2e8f0;
     --color-navy-light: #cbd5e1;
 
@@ -169,7 +171,7 @@
     .main-content {
       margin-left: var(--sidebar-width);
       padding: 2rem 2.5rem;
-      padding-top: 2rem;
+      padding-top: calc(var(--topbar-height) + 2rem);
     }
   }
 
@@ -247,7 +249,7 @@
 
   .btn-primary {
     background: var(--color-navy);
-    color: #fff;
+    color: var(--color-navy-content);
     border-color: var(--color-navy);
   }
   .btn-primary:hover:not(:disabled) {
@@ -374,7 +376,7 @@
   .badge-gray   { background: var(--color-surface-2);     color: var(--color-text-secondary); }
   .badge-blue   { background: var(--color-accent-subtle); color: var(--color-accent-dark); }
   .badge-purple { background: var(--color-purple-subtle); color: var(--color-purple); }
-  .badge-navy   { background: var(--color-navy); color: #fff; }
+  .badge-navy   { background: var(--color-navy); color: var(--color-navy-content); }
 
   /* ── Table ── */
   .table-wrapper {

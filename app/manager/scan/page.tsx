@@ -1,17 +1,17 @@
 'use client';
 // app/(manager)/scan/page.tsx
 // Complete dosimeter scanning workflow
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkerByPublicId } from '@/services/workerService';
 import { saveExposureRecord } from '@/services/exposureService';
 import { uploadToCloudinary } from '@/lib/cloudinary/config';
 import { analyseStripImage, captureVideoFrame, simulateDemoAnalysis } from '@/lib/imageAnalysis';
-import { estimateDose, DEMO_CALIBRATION_MODEL } from '@/config/calibrationModel';
+import { estimateDose } from '@/config/calibrationModel';
 import { writeAuditLog } from '@/services/auditLogService';
 import { useCamera } from '@/hooks/useCamera';
 import { Worker } from '@/types/worker';
-import { formatDose, formatAvgExposure, formatDuration, dosimeterStatusLabel } from '@/lib/utils/formatting';
+import { formatAvgExposure, formatDuration, dosimeterStatusLabel } from '@/lib/utils/formatting';
 import { getShiftLabel } from '@/lib/utils/date';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
@@ -160,6 +160,7 @@ export default function ScanPage() {
         colourFeatures: colourFeatures ?? undefined,
         calibrationModelVersion: result.modelVersion,
         dosimeterStatus: worker.dosimeterStatus === 'expired' ? 'expired' : 'valid',
+        status: 'approved',
         isPublicVisible: true,
         notes: isDemoMode ? 'DEMO MODE — Synthetic analysis result' : '',
       });
@@ -175,7 +176,7 @@ export default function ScanPage() {
       });
 
       setStep('saved');
-    } catch (err) {
+    } catch {
       setError('Failed to save record. Please try again.');
     } finally {
       setLoading(false);
@@ -233,7 +234,7 @@ export default function ScanPage() {
             <QrCode size={40} style={{ color: 'var(--color-accent)', margin: '0 auto 0.75rem' }} />
             <h3>Scan Worker QR Code</h3>
             <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-              Enter the worker's SENTINEL ID or scan the QR code
+              Enter the worker&apos;s SENTINEL ID or scan the QR code
             </p>
           </div>
 
