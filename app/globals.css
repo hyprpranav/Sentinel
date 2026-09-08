@@ -556,16 +556,22 @@
     margin: 0 auto;
   }
 
+  .worker-menu-button { display: inline-flex; }
+
   @media (min-width: 1024px) {
     .bottom-nav { display: none; }
+    .worker-shell > header { left: var(--sidebar-width); }
+    .worker-menu-button { display: none; }
     .worker-main {
       max-width: 1180px;
       padding: calc(var(--topbar-height) + 2rem) 2.5rem 2.5rem;
+      margin-left: var(--sidebar-width);
     }
     .worker-main > div:first-child {
       max-width: none;
     }
   }
+
 
   /* ── Dose Display ── */
   .dose-value {

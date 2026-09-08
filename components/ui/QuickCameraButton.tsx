@@ -172,7 +172,10 @@ export function QuickCameraButton({ userId, role, displayName, variant = 'icon' 
       return (
         <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1.25rem', border: '1px solid var(--color-accent)' }}>
           <div><p style={{ fontWeight: 700, marginBottom: 4 }}>Capture dosimeter reading</p><p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Take a photo or upload one for review before analysis.</p></div>
-          <button onClick={openCamera} className="btn btn-primary" style={{ flexShrink: 0 }}><Camera size={17} /> Open Camera</button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button onClick={openCamera} className="btn btn-primary"><Camera size={17} /> Open Camera</button>
+            <label className="btn btn-outline" style={{ cursor: 'pointer' }}><Upload size={16} /> Upload Photo<input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} /></label>
+          </div>
         </div>
       );
     }
