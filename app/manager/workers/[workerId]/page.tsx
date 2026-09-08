@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { ArrowLeft } from 'lucide-react';
 import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay';
+import { getWorkerQRUrl } from '@/lib/qr/generator';
 
 export default function WorkerDetailsPage({ params }: { params: { workerId: string } }) {
   const router = useRouter();
@@ -78,7 +79,7 @@ export default function WorkerDetailsPage({ params }: { params: { workerId: stri
 
           <div className="bg-navy-card p-6 rounded-xl border border-navy-border shadow flex flex-col items-center">
             <h3 className="font-semibold mb-4 w-full text-left">QR Code</h3>
-            <QRCodeDisplay data={worker.qrCodeData} downloadName={`${worker.publicId}-qr`} />
+            <QRCodeDisplay data={getWorkerQRUrl(worker.publicId)} downloadName={`${worker.publicId}-qr`} />
           </div>
         </div>
 

@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { COLLECTIONS, generateWorkerId } from '@/lib/firebase/firestore';
+import { getWorkerQRUrl } from '@/lib/qr/generator';
 import { Worker, WorkerRequest } from '@/types/worker';
 import { toFirestoreDate } from '@/lib/utils/date';
 
@@ -142,7 +143,7 @@ export async function approveWorkerRequest(
       profilePhotoUrl: reqData.profilePhotoUrl ?? null,
       managerId,
       status: 'active',
-      qrCodeData: generateWorkerId(sequence),
+      qrCodeData: getWorkerQRUrl(generateWorkerId(sequence)),
       dosimeterStatus: 'not_assigned',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

@@ -8,6 +8,7 @@ import { logoutUser } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { LogOut, User as UserIcon, Building, Phone, Mail, Hash } from 'lucide-react';
+import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay';
 
 interface ManagerData {
   fullName?: string;
@@ -135,6 +136,14 @@ export default function ManagerProfilePage() {
       <button className="btn btn-outline w-full justify-center mb-6" onClick={handleLogout}>
         <LogOut size={16} /> Sign Out
       </button>
+
+      {manager?.publicId && (
+        <div className="bg-navy-card border border-navy-border shadow-lg rounded-xl p-6 mb-6 flex flex-col items-center">
+          <h3 className="font-bold mb-2">My Manager QR</h3>
+          <p className="text-sm text-gray-400 text-center mb-4">Download your manager identification QR code.</p>
+          <QRCodeDisplay data={manager.publicId} downloadName={`SENTINEL-${manager.publicId}-QR`} />
+        </div>
+      )}
     </div>
   );
 }

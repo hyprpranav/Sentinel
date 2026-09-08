@@ -9,6 +9,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
 import { Users, Search, Trash2 } from 'lucide-react';
+import { generateQRDataUrl, getWorkerQRUrl } from '@/lib/qr/generator';
+import { Download } from 'lucide-react';
 
 export default function AdminWorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -56,6 +58,14 @@ export default function AdminWorkersPage() {
   const handleDeleteAll = async () => {
     await deleteAllWorkers();
     setWorkers([]);
+  };
+
+  const handleDownloadQR = async (worker: Worker) => {
+    const dataUrl = await generateQRDataUrl(getWorkerQRUrl(worker.publicId), 320);
+    const link = document.createElement('a');
+    link.download = `SENTINEL-${worker.publicId}-QR.png`;
+    link.href = dataUrl;
+    link.click();
   };
 
   return (
@@ -154,6 +164,9 @@ export default function AdminWorkersPage() {
                       {formatDate(w.createdAt)}
                     </td>
                     <td>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadQR(w)} title={`Download QR for ${w.fullName}`}>
+                        <Download size={15} /> QR
+                      </button>
                       <button
                         className="btn btn-ghost btn-sm"
                         onClick={() => handleDelete(w.id)}

@@ -138,8 +138,8 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
         {!capturedImage && !error && (
           <div style={{
             position: 'absolute',
-            width: '250px',
-            height: '80px',
+            width: 'min(78vw, 420px)',
+            aspectRatio: '1 / 1',
             border: '2px dashed rgba(255, 255, 255, 0.7)',
             borderRadius: '8px',
             boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'

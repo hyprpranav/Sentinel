@@ -1,7 +1,7 @@
 'use client';
 // app/(manager)/scan/page.tsx
 // Complete dosimeter scanning workflow
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkerByPublicId } from '@/services/workerService';
 import { saveExposureRecord } from '@/services/exposureService';
@@ -40,9 +40,17 @@ export default function ScanPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
+  const [qrError, setQrError] = useState('');
 
   const { videoRef, isActive, error: cameraError, startCamera, stopCamera } = useCamera();
   const imgRef = useRef<HTMLImageElement>(null);
+  const qrVideoRef = useRef<HTMLVideoElement>(null);
+  const qrStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => () => {
+    qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const reset = () => {
     stopCamera();
@@ -58,15 +66,13 @@ export default function ScanPage() {
     setIsDemoMode(false);
   };
 
-  // Resolve worker from QR input
-  const handleQRSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!qrInput.trim()) return;
+  const resolveWorker = async (value: string) => {
+    if (!value.trim()) return;
     setLoading(true);
     setError('');
     try {
       // Support full URL or just the ID
-      const id = qrInput.trim().split('/').pop() ?? qrInput.trim();
+      const id = value.trim().split('/').pop() ?? value.trim();
       const found = await getWorkerByPublicId(id);
       if (!found) { setError('Worker not found. Please check the QR code.'); return; }
       setWorker(found);
@@ -75,6 +81,63 @@ export default function ScanPage() {
       setError('Failed to identify worker. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Resolve worker from manually entered or camera-detected QR data.
+  const handleQRSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await resolveWorker(qrInput);
+  };
+
+  const stopQrScanner = () => {
+    qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+    qrStreamRef.current = null;
+    setQrScanning(false);
+  };
+
+  const startQrScanner = async () => {
+    setQrError('');
+    if (!('BarcodeDetector' in window)) {
+      setQrError('QR camera scanning is not supported in this browser. Enter the SENTINEL ID manually.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      qrStreamRef.current = stream;
+      setQrScanning(true);
+      if (qrVideoRef.current) {
+        qrVideoRef.current.srcObject = stream;
+        await qrVideoRef.current.play();
+      }
+
+      const Detector = (window as typeof window & {
+        BarcodeDetector: new (options?: { formats: string[] }) => {
+          detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
+        };
+      }).BarcodeDetector;
+      const detector = new Detector({ formats: ['qr_code'] });
+      const scan = async () => {
+        if (!qrVideoRef.current || !qrStreamRef.current) return;
+        try {
+          const codes = await detector.detect(qrVideoRef.current);
+          if (codes[0]?.rawValue) {
+            const value = codes[0].rawValue;
+            setQrInput(value);
+            stopQrScanner();
+            await resolveWorker(value);
+            return;
+          }
+        } catch {
+          setQrError('Unable to read this QR code. Keep it inside the square and try again.');
+        }
+        if (qrStreamRef.current) window.setTimeout(scan, 250);
+      };
+      window.setTimeout(scan, 250);
+    } catch {
+      setQrError('Camera access denied or unavailable. Enter the SENTINEL ID manually.');
     }
   };
 
@@ -239,6 +302,14 @@ export default function ScanPage() {
           </div>
 
           <form onSubmit={handleQRSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {qrScanning && (
+              <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '0.75rem', background: '#000', aspectRatio: '1 / 1' }}>
+                <video ref={qrVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ position: 'absolute', inset: '11%', border: '2px solid #38bdf8', borderRadius: '0.75rem', boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
+                <button type="button" className="btn btn-ghost" onClick={stopQrScanner} style={{ position: 'absolute', top: 12, right: 12, color: '#fff' }}>Close</button>
+              </div>
+            )}
+            {qrError && <div className="alert alert-danger"><AlertTriangle size={15} /><span>{qrError}</span></div>}
             <div className="form-group">
               <label htmlFor="qr-input" className="input-label">Worker SENTINEL ID or QR URL</label>
               <input
@@ -253,6 +324,11 @@ export default function ScanPage() {
                 disabled={loading}
               />
             </div>
+            {!qrScanning && (
+              <button type="button" className="btn btn-outline" onClick={startQrScanner} disabled={loading}>
+                <Camera size={16} /> Scan QR with Camera
+              </button>
+            )}
             <button type="submit" className="btn btn-primary btn-lg" disabled={loading || !qrInput.trim()}>
               {loading ? <><LoadingSpinner size={16} /> Looking up...</> : <>Identify Worker <ChevronRight size={16} /></>}
             </button>

@@ -267,7 +267,8 @@ export function QuickCameraButton({ userId, role, displayName }: QuickCameraButt
         {overlayState === 'camera' && !cameraError && (
           <div style={{
             position: 'absolute',
-            width: 260, height: 90,
+            width: 'min(78vw, 420px)',
+            aspectRatio: '1 / 1',
             border: '2px dashed rgba(255,255,255,0.7)',
             borderRadius: 10,
             boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',

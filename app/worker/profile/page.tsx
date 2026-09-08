@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { LogOut, User as UserIcon, Building, Phone, Mail, Hash } from 'lucide-react';
 import { DosimeterBadge } from '@/components/ui/Badge';
 import { QRCodeDisplay } from '@/components/ui/QRCodeDisplay';
+import { getWorkerQRUrl } from '@/lib/qr/generator';
 
 export default function WorkerProfilePage() {
   const { user } = useAuthContext();
@@ -187,7 +188,7 @@ export default function WorkerProfilePage() {
             Download this QR code and attach it to your physical dosimeter for easy scanning.
           </p>
           {worker?.qrCodeData && (
-            <QRCodeDisplay data={worker.qrCodeData} downloadName={`SNT-QR-${worker.publicId}`} />
+            <QRCodeDisplay data={getWorkerQRUrl(worker.publicId)} downloadName={`SNT-QR-${worker.publicId}`} />
           )}
         </div>
       </div>
