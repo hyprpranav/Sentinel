@@ -25,7 +25,7 @@ import {
 type Step = 'qr' | 'confirm-worker' | 'capture' | 'analysis' | 'result' | 'saved';
 
 export default function ScanPage() {
-  const { user, displayName } = useAuthContext();
+  const { user, displayName, role } = useAuthContext();
   const [step, setStep] = useState<Step>('qr');
   const [qrInput, setQrInput] = useState('');
   const [worker, setWorker] = useState<Worker | null>(null);
@@ -234,7 +234,7 @@ export default function ScanPage() {
       await writeAuditLog({
         actorId: user.uid,
         actorName: displayName ?? 'Manager',
-        role: 'manager',
+        role: role === 'admin' ? 'admin' : 'manager',
         action: 'exposure_record_saved',
         targetId: worker.id,
         targetName: worker.fullName,
