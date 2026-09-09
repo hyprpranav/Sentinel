@@ -91,6 +91,7 @@ export const DEMO_CALIBRATION_MODEL: CalibrationModel = {
 interface EstimationInput {
   meanRgb: [number, number, number];
   colourDifference: number;
+  colorChangePercent?: number;
   monitoringDuration: number; // hours
   temperature?: number;
   humidity?: number;
@@ -117,13 +118,28 @@ export function estimateDose(input: EstimationInput): EstimationResult {
   const [r, g, b] = input.meanRgb;
   const { colourDifference, monitoringDuration } = input;
 
-  // Linear model: intercept + coefficients × features
-  let rawDose =
-    model.coefficients.intercept +
-    model.coefficients.meanRed * r +
-    model.coefficients.meanGreen * g +
-    model.coefficients.meanBlue * b +
-    model.coefficients.colourDifference * colourDifference;
+  // Calculate percentage color change: use explicitly measured darkening or calculate from colourDifference
+  const colorChangePercent = input.colorChangePercent !== undefined
+    ? Math.min(100, Math.max(0, Math.round(input.colorChangePercent)))
+    : Math.min(100, Math.max(0, Math.round((colourDifference / 180) * 100)));
+
+  // Dose calculation: directly proportional to colorimetric chemical darkening
+  // 0% darkening = 0.0 ppm·h (clean/unexposed)
+  // 20% darkening = ~11 ppm·h (moderate threshold)
+  // 50% darkening = ~27.5 ppm·h (high threshold)
+  // 100% darkening = ~55 ppm·h (critical saturation)
+  let rawDose: number;
+  if (input.colorChangePercent !== undefined) {
+    rawDose = (colorChangePercent / 100) * 55;
+  } else {
+    // Fallback linear model
+    rawDose =
+      model.coefficients.intercept +
+      model.coefficients.meanRed * r +
+      model.coefficients.meanGreen * g +
+      model.coefficients.meanBlue * b +
+      model.coefficients.colourDifference * colourDifference;
+  }
 
   rawDose = Math.max(0, rawDose); // dose cannot be negative
 
@@ -142,9 +158,6 @@ export function estimateDose(input: EstimationInput): EstimationResult {
   const duration = monitoringDuration > 0 ? monitoringDuration : 8;
   const estimatedAverageExposure = rawDose / duration;
   const estimatedTwa = rawDose / 8; // standard 8-hour shift Time Weighted Average
-
-  // Calculate percentage color change from baseline blank (255, 252, 245)
-  const colorChangePercent = Math.min(100, Math.max(0, Math.round((colourDifference / 180) * 100)));
 
   // Find dose range label
   const range = model.doseRanges.find((r) => rawDose >= r.min && rawDose < r.max);

@@ -2,7 +2,15 @@
 // app/(worker)/my-exposure/page.tsx
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { query, collection, where, getDocs, orderBy, limit as fLimit } from 'firebase/firestore';
+import {
+  query,
+  collection,
+  where,
+  getDocs,
+  orderBy,
+  limit as fLimit,
+  onSnapshot
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { ExposureRecord } from '@/types/exposure';
@@ -11,7 +19,7 @@ import { formatDateTime, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Activity, BarChart2 } from 'lucide-react';
+import { Activity, ShieldCheck } from 'lucide-react';
 import { getWorkerExposureSummary } from '@/services/exposureService';
 
 export default function MyExposurePage() {
@@ -22,68 +30,127 @@ export default function MyExposurePage() {
 
   useEffect(() => {
     if (!user) return;
+    let unsubscribe: (() => void) | null = null;
+
     async function load() {
       try {
         const wSnap = await getDocs(
           query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', user!.uid), fLimit(1))
         );
-        if (wSnap.empty) { setLoading(false); return; }
+        if (wSnap.empty) {
+          setLoading(false);
+          return;
+        }
         const wId = wSnap.docs[0].id;
 
-        const rSnap = await getDocs(
-          query(
-            collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-            where('workerId', '==', wId),
-            orderBy('createdAt', 'desc'),
-            fLimit(30)
-          )
+        const recordsQuery = query(
+          collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+          where('workerId', '==', wId),
+          orderBy('createdAt', 'desc'),
+          fLimit(30)
         );
 
-        const loaded: ExposureRecord[] = [];
-        rSnap.forEach((doc) => {
-          const r = doc.data();
-          loaded.push({
-            id: doc.id,
-            workerId: r.workerId,
-            managerId: r.managerId,
-            timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
-            shift: r.shift,
-            imageUrl: r.imageUrl,
-            stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
-            detectedExpiryDate: r.detectedExpiryDate,
-            expiryStatus: r.expiryStatus,
-            temperature: r.temperature,
-            humidity: r.humidity,
-            location: r.location,
-            weather: r.weather,
-            environmentalCorrection: r.environmentalCorrection,
-            colorChangePercent: r.colorChangePercent,
-            estimatedDosePpmH: r.estimatedDosePpmH,
-            monitoringDuration: r.monitoringDuration,
-            estimatedAverageExposure: r.estimatedAverageExposure,
-            estimatedTwa: r.estimatedTwa,
-            calibrationModelVersion: r.calibrationModelVersion,
-            dosimeterStatus: r.dosimeterStatus,
-            isPublicVisible: r.isPublicVisible,
-            createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
-          } as ExposureRecord);
-        });
-        setRecords(loaded);
+        unsubscribe = onSnapshot(
+          recordsQuery,
+          async (snapshot) => {
+            const loaded: ExposureRecord[] = snapshot.docs.map((doc) => {
+              const r = doc.data();
+              return {
+                id: doc.id,
+                workerId: r.workerId,
+                workerName: r.workerName,
+                workerPublicId: r.workerPublicId,
+                managerId: r.managerId,
+                managerName: r.managerName,
+                capturedByUid: r.capturedByUid,
+                capturedByRole: r.capturedByRole,
+                capturedByName: r.capturedByName,
+                timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
+                shift: r.shift,
+                imageUrl: r.imageUrl,
+                stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
+                detectedExpiryDate: r.detectedExpiryDate,
+                expiryStatus: r.expiryStatus,
+                temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+                humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+                location: r.location,
+                weather: r.weather,
+                environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+                colorChangePercent: r.colorChangePercent !== undefined ? Number(r.colorChangePercent) : undefined,
+                estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+                monitoringDuration: Number(r.monitoringDuration) || 8,
+                estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+                estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+                calibrationModelVersion: r.calibrationModelVersion,
+                dosimeterStatus: r.dosimeterStatus,
+                isPublicVisible: r.isPublicVisible,
+                createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
+              } as ExposureRecord;
+            });
 
-        const sum = await getWorkerExposureSummary(wId);
-        setSummary({
-          totalScans: sum.totalScans,
-          totalDays: sum.totalMonitoringDays,
-          avgDose: loaded.length > 0 ? (loaded.reduce((acc: number, r: ExposureRecord) => acc + r.estimatedDosePpmH, 0) / loaded.length) : 0
-        });
+            setRecords(loaded);
 
+            const sum = await getWorkerExposureSummary(wId).catch(() => null);
+            setSummary({
+              totalScans: loaded.length > 0 ? loaded.length : (sum?.totalScans ?? 0),
+              totalDays: sum?.totalMonitoringDays ?? 1,
+              avgDose: loaded.length > 0
+                ? (loaded.reduce((acc, r) => acc + r.estimatedDosePpmH, 0) / loaded.length)
+                : 0,
+            });
+            setLoading(false);
+          },
+          (err) => {
+            console.warn('Real-time listener fallback:', err);
+            getDocs(
+              query(
+                collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+                where('workerId', '==', wId),
+                fLimit(30)
+              )
+            ).then((fallbackSnap) => {
+              const loaded = fallbackSnap.docs
+                .map((doc) => {
+                  const r = doc.data();
+                  return {
+                    id: doc.id,
+                    workerId: r.workerId,
+                    workerName: r.workerName,
+                    workerPublicId: r.workerPublicId,
+                    managerId: r.managerId,
+                    managerName: r.managerName,
+                    capturedByUid: r.capturedByUid,
+                    capturedByRole: r.capturedByRole,
+                    capturedByName: r.capturedByName,
+                    timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
+                    shift: r.shift,
+                    imageUrl: r.imageUrl,
+                    stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
+                    colorChangePercent: r.colorChangePercent !== undefined ? Number(r.colorChangePercent) : undefined,
+                    estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+                    monitoringDuration: Number(r.monitoringDuration) || 8,
+                    estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+                    dosimeterStatus: r.dosimeterStatus,
+                    createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
+                  } as ExposureRecord;
+                })
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+              setRecords(loaded);
+            }).finally(() => setLoading(false));
+          }
+        );
       } catch (err) {
         console.error('Failed to load exposure records', err);
-      } finally {
         setLoading(false);
       }
     }
+
     load();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user]);
 
   const totalScans = records.length > 0 ? records.length : (summary?.totalScans ?? 0);
@@ -103,7 +170,7 @@ export default function MyExposurePage() {
         <p>Personal H₂S exposure records, cumulative dosage, and health impact metrics</p>
       </div>
 
-      {/* Summary KPI Cards - Always Visible for Complete Visibility */}
+      {/* Summary KPI Cards */}
       <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
         <div className="stat-card">
           <span className="stat-label">Total Scans</span>
@@ -193,13 +260,40 @@ export default function MyExposurePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {records.map((r) => (
             <div key={r.id} className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              {/* Scan Attribution Banner */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                background: (r.capturedByRole === 'manager' || r.capturedByRole === 'admin')
+                  ? 'rgba(2, 132, 199, 0.1)'
+                  : 'var(--color-surface-2)',
+                border: (r.capturedByRole === 'manager' || r.capturedByRole === 'admin')
+                  ? '1px solid rgba(2, 132, 199, 0.25)'
+                  : '1px solid var(--color-border)',
+                marginBottom: '0.75rem',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-primary)',
+              }}>
+                <ShieldCheck size={15} style={{ color: '#0284c7', flexShrink: 0 }} />
+                <span>
+                  {(r.capturedByRole === 'manager' || r.capturedByRole === 'admin') ? (
+                    <>Scanned and updated by Manager <strong>{r.capturedByName || r.managerName || 'Manager'}</strong> on {formatDateTime(r.createdAt || r.timestamp)}</>
+                  ) : (
+                    <>Self-scanned dosimeter record on {formatDateTime(r.createdAt || r.timestamp)}</>
+                  )}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                 <div>
-                  <p style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.125rem' }}>
-                    {formatDateTime(r.createdAt)}
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', marginBottom: '0.125rem' }}>
+                    {formatDateTime(r.createdAt || r.timestamp)}
                   </p>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                    {r.shift.charAt(0).toUpperCase() + r.shift.slice(1)} shift · {formatDuration(r.monitoringDuration)}
+                    {r.shift.charAt(0).toUpperCase() + r.shift.slice(1)} shift · {formatDuration(r.monitoringDuration)} duration
                   </p>
                 </div>
                 <DoseLevelBadge ppmH={r.estimatedDosePpmH} />
@@ -216,20 +310,28 @@ export default function MyExposurePage() {
 
               {/* Environmental and Expiry details */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                {r.colorChangePercent !== undefined && (
+                  <span style={{
+                    fontWeight: 700,
+                    color: r.colorChangePercent > 30 ? 'var(--color-amber)' : 'var(--color-text-secondary)',
+                    background: 'var(--color-surface-2)',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                  }}>
+                    Darkening: {r.colorChangePercent}%
+                  </span>
+                )}
                 {r.temperature !== undefined && r.humidity !== undefined && (
                   <span>Ambient: {r.temperature}°C · {r.humidity}% RH</span>
                 )}
                 {r.stripExpiryDate && (
                   <span>Strip Expiry: {r.stripExpiryDate}</span>
                 )}
-                {r.colorChangePercent !== undefined && (
-                  <span>Reaction: {r.colorChangePercent}%</span>
-                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                  Avg: {formatAvgExposure(r.estimatedAverageExposure)}
+                  Estimated Avg: {formatAvgExposure(r.estimatedAverageExposure)}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {r.imageUrl && (

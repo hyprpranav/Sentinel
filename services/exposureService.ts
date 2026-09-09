@@ -79,12 +79,16 @@ export async function saveExposureRecord(
   });
 
   // Update worker's lastScanAt and dosimeterStatus
-  const workerRef = doc(db, COLLECTIONS.WORKERS, record.workerId);
-  await updateDoc(workerRef, {
-    lastScanAt: serverTimestamp(),
-    dosimeterStatus: record.dosimeterStatus,
-    updatedAt: serverTimestamp(),
-  });
+  try {
+    const workerRef = doc(db, COLLECTIONS.WORKERS, record.workerId);
+    await updateDoc(workerRef, {
+      lastScanAt: serverTimestamp(),
+      dosimeterStatus: record.dosimeterStatus,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (wErr) {
+    console.warn('Could not update worker profile timestamp/status:', wErr);
+  }
 
   return ref.id;
 }

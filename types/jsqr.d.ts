@@ -1,6 +1,17 @@
 declare module 'jsqr' {
-  interface QRCodeResult {
+  export interface Point {
+    x: number;
+    y: number;
+  }
+
+  export interface QRCodeResult {
     data: string;
+    location?: {
+      topRightCorner: Point;
+      topLeftCorner: Point;
+      bottomRightCorner: Point;
+      bottomLeftCorner: Point;
+    };
   }
 
   export default function jsQR(

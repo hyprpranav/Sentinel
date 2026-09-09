@@ -2,19 +2,27 @@
 // app/(worker)/home/page.tsx
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { query, collection, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import {
+  query,
+  collection,
+  where,
+  getDocs,
+  limit,
+  orderBy,
+  onSnapshot
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { ExposureRecord } from '@/types/exposure';
 import { Worker } from '@/types/worker';
-import { formatDuration } from '@/lib/utils/formatting';
+import { formatDuration, formatDose } from '@/lib/utils/formatting';
 import { formatDateTime, getGreeting, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
 import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
-import { Activity, Info } from 'lucide-react';
+import { Activity, Info, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function WorkerHome() {
   const { user, displayName } = useAuthContext();
@@ -27,23 +35,26 @@ export default function WorkerHome() {
   useEffect(() => {
     if (!user) return;
     const uid = user.uid;
+    let unsubscribeRecords: (() => void) | null = null;
 
-    async function load() {
+    async function setupWorkerListener() {
       try {
         const wSnap = await getDocs(
           query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', uid), limit(1))
         );
 
-        if (wSnap.empty) return;
+        if (wSnap.empty) {
+          setLoading(false);
+          return;
+        }
 
         const wDoc = wSnap.docs[0];
         const wData = wDoc.data();
-        setWorkerProfile({
+        const profile: Worker = {
           id: wDoc.id,
           publicId: wData.publicId,
           uid: wData.uid,
           fullName: wData.fullName,
-          employeeId: wData.employeeId,
           department: wData.department,
           designation: wData.designation,
           status: wData.status,
@@ -52,56 +63,118 @@ export default function WorkerHome() {
           profilePhotoUrl: wData.profilePhotoUrl,
           createdAt: toFirestoreDate(wData.createdAt) ?? new Date(),
           updatedAt: toFirestoreDate(wData.updatedAt) ?? new Date(),
-        } as Worker);
+        };
+        setWorkerProfile(profile);
 
-        let rSnap;
-        try {
-          rSnap = await getDocs(query(
-            collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-            where('workerId', '==', wDoc.id),
-            orderBy('createdAt', 'desc'),
-            limit(30)
-          ));
-        } catch {
-          rSnap = await getDocs(query(
-            collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-            where('workerId', '==', wDoc.id),
-            limit(30)
-          ));
-        }
+        // Real-time listener on exposure records for instant updates when manager scans
+        const recordsQuery = query(
+          collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+          where('workerId', '==', wDoc.id),
+          orderBy('createdAt', 'desc'),
+          limit(30)
+        );
 
-        const records = rSnap.docs.map(doc => {
-          const r = doc.data();
-          return {
-            id: doc.id,
-            workerId: r.workerId,
-            managerId: r.managerId,
-            timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
-            shift: r.shift,
-            estimatedDosePpmH: r.estimatedDosePpmH,
-            stripExpiryDate: r.stripExpiryDate,
-            monitoringDuration: r.monitoringDuration,
-            estimatedAverageExposure: r.estimatedAverageExposure,
-            calibrationModelVersion: r.calibrationModelVersion,
-            dosimeterStatus: r.dosimeterStatus,
-            isPublicVisible: r.isPublicVisible,
-            createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
-            status: r.status,
-            reviewerRemarks: r.reviewerRemarks,
-          } as ExposureRecord;
-        }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        unsubscribeRecords = onSnapshot(
+          recordsQuery,
+          (snapshot) => {
+            const records: ExposureRecord[] = snapshot.docs.map((doc) => {
+              const r = doc.data();
+              return {
+                id: doc.id,
+                workerId: r.workerId,
+                workerName: r.workerName,
+                workerPublicId: r.workerPublicId,
+                managerId: r.managerId,
+                managerName: r.managerName,
+                capturedByUid: r.capturedByUid,
+                capturedByRole: r.capturedByRole,
+                capturedByName: r.capturedByName,
+                timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
+                shift: r.shift,
+                estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+                stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
+                detectedExpiryDate: r.detectedExpiryDate,
+                expiryStatus: r.expiryStatus,
+                monitoringDuration: Number(r.monitoringDuration) || 8,
+                estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+                estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+                colorChangePercent: r.colorChangePercent !== undefined ? Number(r.colorChangePercent) : undefined,
+                temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+                humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+                location: r.location,
+                weather: r.weather,
+                environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+                calibrationModelVersion: r.calibrationModelVersion,
+                dosimeterStatus: r.dosimeterStatus,
+                isPublicVisible: r.isPublicVisible,
+                createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
+                status: r.status,
+                reviewerRemarks: r.reviewerRemarks,
+              } as ExposureRecord;
+            });
 
-        setRecentScans(records);
-        setLatestRecord(records[0] ?? null);
+            setRecentScans(records);
+            setLatestRecord(records[0] ?? null);
+            setLoading(false);
+          },
+          (err) => {
+            console.warn('Real-time listener fallback to getDocs:', err);
+            // Fallback to one-time query if order-by index is still propagating
+            getDocs(
+              query(
+                collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+                where('workerId', '==', wDoc.id),
+                limit(30)
+              )
+            ).then((fallbackSnap) => {
+              const records = fallbackSnap.docs
+                .map((doc) => {
+                  const r = doc.data();
+                  return {
+                    id: doc.id,
+                    workerId: r.workerId,
+                    workerName: r.workerName,
+                    workerPublicId: r.workerPublicId,
+                    managerId: r.managerId,
+                    managerName: r.managerName,
+                    capturedByUid: r.capturedByUid,
+                    capturedByRole: r.capturedByRole,
+                    capturedByName: r.capturedByName,
+                    timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
+                    shift: r.shift,
+                    estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+                    stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
+                    monitoringDuration: Number(r.monitoringDuration) || 8,
+                    estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+                    colorChangePercent: r.colorChangePercent !== undefined ? Number(r.colorChangePercent) : undefined,
+                    temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+                    humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+                    calibrationModelVersion: r.calibrationModelVersion,
+                    dosimeterStatus: r.dosimeterStatus,
+                    isPublicVisible: r.isPublicVisible,
+                    createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
+                    status: r.status,
+                  } as ExposureRecord;
+                })
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+              setRecentScans(records);
+              setLatestRecord(records[0] ?? null);
+            }).finally(() => setLoading(false));
+          }
+        );
       } catch (error) {
         console.error('Worker home load failed:', error);
         setLoadError('Some exposure data could not be loaded. Your profile is still available.');
-      } finally {
         setLoading(false);
       }
     }
 
-    load();
+    setupWorkerListener();
+
+    return () => {
+      if (unsubscribeRecords) unsubscribeRecords();
+    };
   }, [user]);
 
   const currentFullName = workerProfile?.fullName || displayName || 'Worker';
@@ -138,6 +211,7 @@ export default function WorkerHome() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {loadError && <div className="alert alert-warning"><Info size={15} /><span>{loadError}</span></div>}
+
           {/* Worker profile summary */}
           <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
@@ -177,13 +251,48 @@ export default function WorkerHome() {
           {/* Latest exposure record */}
           {latestRecord ? (
             <div className="card">
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                Latest Recorded Exposure
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>
+                  Latest Recorded Exposure
+                </p>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  Real-time Synced
+                </span>
+              </div>
+
+              {/* Manager Scan Audit & Attribution Banner */}
+              <div style={{
+                padding: '0.875rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '1rem',
+                background: (latestRecord.capturedByRole === 'manager' || latestRecord.capturedByRole === 'admin')
+                  ? 'rgba(2, 132, 199, 0.12)'
+                  : 'var(--color-surface-2)',
+                border: (latestRecord.capturedByRole === 'manager' || latestRecord.capturedByRole === 'admin')
+                  ? '1.5px solid rgba(2, 132, 199, 0.35)'
+                  : '1px solid var(--color-border)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}>
+                <ShieldCheck size={20} style={{ color: '#0284c7', flexShrink: 0 }} />
+                <div style={{ fontSize: '0.875rem', lineHeight: 1.45, color: 'var(--color-text-primary)' }}>
+                  {(latestRecord.capturedByRole === 'manager' || latestRecord.capturedByRole === 'admin') ? (
+                    <>
+                      <strong>Manager {latestRecord.capturedByName || latestRecord.managerName || 'Manager'}</strong> scanned your dosimeter watch and updated your exposure on <strong>{formatDateTime(latestRecord.createdAt || latestRecord.timestamp)}</strong>
+                    </>
+                  ) : (
+                    <>
+                      Dosimeter record logged and verified on <strong>{formatDateTime(latestRecord.createdAt || latestRecord.timestamp)}</strong>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
-                    {latestRecord.estimatedDosePpmH.toFixed(1)}
+                    {formatDose(latestRecord.estimatedDosePpmH)}
                   </span>
                   <span className="dose-unit">ppm·h</span>
                 </div>
@@ -192,24 +301,34 @@ export default function WorkerHome() {
                   <DosimeterBadge status={latestRecord.dosimeterStatus} />
                 </div>
               </div>
+
               <div style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr',
                 gap: '0.75rem', background: 'var(--color-surface-2)',
                 borderRadius: 'var(--radius-md)', padding: '1rem',
               }}>
                 <div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chemical Darkening</p>
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text-primary)' }}>
+                    {latestRecord.colorChangePercent !== undefined ? `${latestRecord.colorChangePercent}% darkened` : 'Normal (0%)'}
+                  </p>
+                </div>
+                <div>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Monitoring Duration</p>
                   <p style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{formatDuration(latestRecord.monitoringDuration)}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Recorded</p>
-                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{formatDateTime(latestRecord.createdAt)}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Recorded On</p>
+                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{formatDateTime(latestRecord.createdAt || latestRecord.timestamp)}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Strip expiry</p>
-                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{latestRecord.stripExpiryDate || 'N/A'}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ambient Weather</p>
+                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                    {latestRecord.temperature !== undefined ? `${latestRecord.temperature}°C · ${latestRecord.humidity}% RH` : 'Recorded at normal ambient'}
+                  </p>
                 </div>
               </div>
+
               <div className="alert alert-info" style={{ marginTop: '0.75rem' }}>
                 <Info size={14} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '0.8125rem' }}>
@@ -219,7 +338,7 @@ export default function WorkerHome() {
             </div>
           ) : (
             <div className="card">
-              <EmptyState icon={Activity} title="No exposure records yet" description="Your dosimeter readings will appear here after your first scan." />
+              <EmptyState icon={Activity} title="No exposure records yet" description="Your dosimeter readings will appear here after your first scan by a manager or self-check." />
             </div>
           )}
         </div>
