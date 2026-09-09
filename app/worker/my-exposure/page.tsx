@@ -11,11 +11,13 @@ import { formatDateTime, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Activity } from 'lucide-react';
+import { Activity, BarChart2 } from 'lucide-react';
+import { getWorkerExposureSummary } from '@/services/exposureService';
 
 export default function MyExposurePage() {
   const { user } = useAuthContext();
   const [records, setRecords] = useState<ExposureRecord[]>([]);
+  const [summary, setSummary] = useState<{ totalScans: number; totalDays: number; avgDose: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +58,14 @@ export default function MyExposurePage() {
           } as ExposureRecord);
         });
         setRecords(loaded);
+
+        const sum = await getWorkerExposureSummary(wId);
+        setSummary({
+          totalScans: sum.totalScans,
+          totalDays: sum.totalMonitoringDays,
+          avgDose: loaded.length > 0 ? (loaded.reduce((acc: number, r: ExposureRecord) => acc + r.estimatedDosePpmH, 0) / loaded.length) : 0
+        });
+
       } catch (err) {
         console.error('Failed to load exposure records', err);
       } finally {
@@ -81,9 +91,29 @@ export default function MyExposurePage() {
           <EmptyState icon={Activity} title="No exposure history" description="Your readings will appear here once your dosimeter is scanned by a manager." />
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {records.map((r) => (
-            <div key={r.id} className="card" style={{ padding: '1.25rem' }}>
+        <>
+          {summary && summary.totalScans > 0 && (
+            <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+              <div className="stat-card">
+                <span className="stat-label">Total Scans</span>
+                <span className="stat-value">{summary.totalScans}</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-label">Monitoring Days</span>
+                <span className="stat-value">{summary.totalDays}</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-label">Average Dose</span>
+                <span className="stat-value" style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  {formatDose(summary.avgDose)} <span style={{ fontSize: '10px' }}>ppm·h</span>
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {records.map((r) => (
+              <div key={r.id} className="card" style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div>
                   <p style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.125rem' }}>
@@ -113,7 +143,8 @@ export default function MyExposurePage() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -36,6 +36,9 @@ export interface ExposureRecord {
   status: 'pending' | 'approved' | 'rejected';
   reviewerRemarks?: string;
   isPublicVisible: boolean;
+  capturedByUid?: string;
+  capturedByRole?: 'worker' | 'manager' | 'admin';
+  capturedByName?: string;
   createdAt: Date;
 }
 

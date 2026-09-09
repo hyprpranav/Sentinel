@@ -18,6 +18,22 @@ import { COLLECTIONS, generateManagerId } from '@/lib/firebase/firestore';
 import { ManagerRequest } from '@/types/user';
 import { toFirestoreDate } from '@/lib/utils/date';
 
+/** Fetch all manager documents for admin-level export and listing */
+export async function getAllManagers(): Promise<Record<string, unknown>[]> {
+  try {
+    const snap = await getDocs(
+      query(collection(db, COLLECTIONS.MANAGERS), orderBy('createdAt', 'desc'), limit(500))
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    const snap = await getDocs(
+      query(collection(db, COLLECTIONS.MANAGERS), limit(500))
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+}
+
+
 export async function submitManagerRequest(data: Omit<ManagerRequest, 'id' | 'status' | 'submittedAt'>) {
   const requestData = Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined)

@@ -1,16 +1,18 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, Home, QrCode, UserCircle, LogOut } from 'lucide-react';
+import { Activity, Home, QrCode, UserCircle, LogOut, Download, ScanLine } from 'lucide-react';
 import { SentinelLogo } from './SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { logoutUser } from '@/lib/firebase/auth';
 
 const NAV = [
-  { label: 'Dashboard', href: '/worker/home', icon: Home },
-  { label: 'My QR', href: '/worker/my-qr', icon: QrCode },
-  { label: 'Exposure', href: '/worker/my-exposure', icon: Activity },
-  { label: 'Profile', href: '/worker/profile', icon: UserCircle },
+  { label: 'Dashboard',   href: '/worker/home',        icon: Home },
+  { label: 'My QR',       href: '/worker/my-qr',       icon: QrCode },
+  { label: 'Scan',        href: '/worker/scan',        icon: ScanLine },
+  { label: 'Exposure',    href: '/worker/my-exposure', icon: Activity },
+  { label: 'Export',      href: '/worker/export',      icon: Download },
+  { label: 'Profile',     href: '/worker/profile',     icon: UserCircle },
 ];
 
 export function WorkerSidebar({ isOpen, onClose, displayName }: { isOpen: boolean; onClose: () => void; displayName?: string | null }) {

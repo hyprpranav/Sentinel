@@ -63,14 +63,25 @@ service cloud.firestore {
 
     // EXPOSURE RECORDS
     match /exposureRecords/{recordId} {
+      // Managers/admins can read all records.
+      // Workers can read their own records (workerId field stores the Firestore doc ID of the worker,
+      // so we join back to the workers collection to verify the authenticated UID matches).
       allow read: if isManagerOrAdmin()
         || (isAuthenticated() && (
-          resource.data.workerId == request.auth.uid
-          || get(/databases/$(database)/documents/workers/$(resource.data.workerId)).data.uid == request.auth.uid
+          get(/databases/$(database)/documents/workers/$(resource.data.workerId)).data.uid == request.auth.uid
         ))
         || resource.data.isPublicVisible == true;
-      allow create: if isManagerOrAdmin() || (isAuthenticated() && request.resource.data.workerId == request.auth.uid);
-      allow update, delete: if false;
+
+      // Managers/admins can always create exposure records.
+      // Workers can create records for themselves — verified by checking the worker doc's uid field
+      // matches the authenticated user's uid.
+      allow create: if isManagerOrAdmin()
+        || (isAuthenticated() && exists(/databases/$(database)/documents/workers/$(request.resource.data.workerId))
+            && get(/databases/$(database)/documents/workers/$(request.resource.data.workerId)).data.uid == request.auth.uid);
+
+      // Only admins can update/delete (for corrections or appeals)
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     // WORKER REQUESTS

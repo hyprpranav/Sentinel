@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ScanLine, Users, BarChart2,
-  ClipboardList, UserCircle, LogOut, Check,
+  ClipboardList, UserCircle, LogOut, Check, Download,
 } from 'lucide-react';
 import { SentinelLogo } from './SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -18,6 +18,7 @@ const NAV = [
   { label: 'Exposure',       href: '/manager/exposure',  icon: BarChart2 },
   { label: 'Requests',       href: '/manager/requests',  icon: ClipboardList },
   { label: 'Approvals',      href: '/manager/approvals', icon: Check },
+  { label: 'Export',         href: '/manager/export',    icon: Download },
   { label: 'Profile',        href: '/manager/profile',   icon: UserCircle },
 ];
 

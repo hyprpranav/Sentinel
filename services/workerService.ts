@@ -20,6 +20,21 @@ import { getWorkerQRUrl } from '@/lib/qr/generator';
 import { Worker, WorkerRequest } from '@/types/worker';
 import { toFirestoreDate } from '@/lib/utils/date';
 
+/** Fields a manager/admin is allowed to edit on a worker profile */
+export interface WorkerEditableFields {
+  fullName?: string;
+  department?: string;
+  designation?: string;
+  phone?: string;
+  address?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  guardianName?: string;
+  guardianContact?: string;
+  profilePhotoUrl?: string;
+  employeeId?: string;
+}
+
 function docToWorker(id: string, data: Record<string, unknown>): Worker {
   return {
     id,
@@ -76,12 +91,41 @@ export async function getWorkerById(id: string): Promise<Worker | null> {
   return docToWorker(snap.id, snap.data() as Record<string, unknown>);
 }
 
+/**
+ * Look up a worker by their Firebase Auth UID (the `uid` field on the worker document).
+ * This is the correct way to find the worker associated with the logged-in user —
+ * the Firestore document ID is auto-generated and is NOT the same as the Auth UID.
+ */
+export async function getWorkerByUid(uid: string): Promise<Worker | null> {
+  const snap = await getDocs(
+    query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', uid), limit(1))
+  );
+  if (snap.empty) return null;
+  return docToWorker(snap.docs[0].id, snap.docs[0].data() as Record<string, unknown>);
+}
+
+/**
+ * Update authorized editable fields on a worker document.
+ * Does NOT allow changing roles, exposure records, or audit data.
+ */
+export async function updateWorkerById(
+  workerId: string,
+  fields: WorkerEditableFields
+): Promise<void> {
+  const ref = doc(db, COLLECTIONS.WORKERS, workerId);
+  const clean = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== undefined)
+  );
+  await updateDoc(ref, { ...clean, updatedAt: serverTimestamp() });
+}
+
 export async function getAllWorkers(): Promise<Worker[]> {
   const snap = await getDocs(
     query(collection(db, COLLECTIONS.WORKERS), orderBy('createdAt', 'desc'))
   );
   return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
 }
+
 export async function getWorkersByManager(managerId: string): Promise<Worker[]> {
   let snap;
   try {

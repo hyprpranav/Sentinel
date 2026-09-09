@@ -127,7 +127,7 @@ export default function WorkerProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* Profile Form */}
       <div className="col-span-1 md:col-span-2">
         <div className="bg-navy-card border border-navy-border shadow-lg rounded-xl p-8 mb-6">

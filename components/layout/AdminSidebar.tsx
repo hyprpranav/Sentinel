@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, UserCheck, ClipboardList,
   BarChart2, Shield, Settings, FileText,
-  Sliders, ScanLine,
+  Sliders, ScanLine, Download,
 } from 'lucide-react';
 import { SentinelLogo } from './SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -23,6 +23,7 @@ const NAV = [
   { label: 'Dosimeters',       href: '/admin/dosimeters',  icon: Shield },
   { label: 'Calibration',      href: '/admin/calibration', icon: Sliders },
   { label: 'Audit Logs',       href: '/admin/audit-logs',  icon: FileText },
+  { label: 'Export',           href: '/admin/export',      icon: Download },
   { label: 'Settings',         href: '/admin/settings',    icon: Settings },
 ];
 

@@ -113,7 +113,12 @@ export default function ManagerWorkersPage() {
                     <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                       {w.lastScanAt ? timeAgo(w.lastScanAt) : 'Never'}
                     </td>
-                    <td><Link href={`/manager/workers/${w.id}`} className="btn btn-ghost btn-sm">View details</Link></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.375rem' }}>
+                        <Link href={`/manager/workers/${w.id}`} className="btn btn-ghost btn-sm">View Details</Link>
+                        <Link href={`/manager/workers/${w.id}/edit`} className="btn btn-ghost btn-sm">Edit</Link>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

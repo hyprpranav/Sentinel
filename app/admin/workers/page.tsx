@@ -8,9 +8,9 @@ import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
-import { Users, Search, Trash2 } from 'lucide-react';
+import { Users, Search, Trash2, Download } from 'lucide-react';
 import { generateQRDataUrl, getWorkerQRUrl } from '@/lib/qr/generator';
-import { Download } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminWorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -165,17 +165,20 @@ export default function AdminWorkersPage() {
                       {formatDate(w.createdAt)}
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadQR(w)} title={`Download QR for ${w.fullName}`}>
-                        <Download size={15} /> Regenerate QR
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => handleDelete(w.id)}
-                        disabled={w.status === 'inactive'}
-                        style={{ color: '#ef4444' }}
-                      >
-                        Deactivate
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                        <Link href={`/admin/workers/${w.id}`} className="btn btn-ghost btn-sm">View Details</Link>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadQR(w)} title={`Download QR for ${w.fullName}`}>
+                          <Download size={15} /> QR
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleDelete(w.id)}
+                          disabled={w.status === 'inactive'}
+                          style={{ color: '#ef4444' }}
+                        >
+                          Deactivate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

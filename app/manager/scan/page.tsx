@@ -246,7 +246,10 @@ export default function ScanPage() {
         dosimeterStatus: worker.dosimeterStatus === 'expired' ? 'expired' : 'valid',
         status: 'approved',
         isPublicVisible: true,
-          notes: isDemoMode ? 'DEMO MODE - Synthetic analysis result' : '',
+        capturedByUid: user.uid,
+        capturedByRole: role === 'admin' ? 'admin' : 'manager',
+        capturedByName: displayName ?? 'Manager',
+        notes: isDemoMode ? 'DEMO MODE - Synthetic analysis result' : '',
       });
 
       await writeAuditLog({

@@ -563,9 +563,9 @@
     .worker-shell > header { left: var(--sidebar-width); }
     .worker-menu-button { display: none; }
     .worker-main {
-      max-width: 1180px;
       padding: calc(var(--topbar-height) + 2rem) 2.5rem 2.5rem;
       margin-left: var(--sidebar-width);
+      max-width: none;
     }
     .worker-main > div:first-child {
       max-width: none;
@@ -694,7 +694,6 @@
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     padding: 1.25rem 1.5rem;
-    max-width: 480px;
     font-family: var(--font-inter), system-ui, sans-serif;
   }
 

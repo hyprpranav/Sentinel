@@ -42,6 +42,9 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
     status: (data.status as ExposureRecord['status']) || 'pending',
     reviewerRemarks: data.reviewerRemarks as string | undefined,
     isPublicVisible: data.isPublicVisible as boolean ?? false,
+    capturedByUid: data.capturedByUid as string | undefined,
+    capturedByRole: data.capturedByRole as ExposureRecord['capturedByRole'],
+    capturedByName: data.capturedByName as string | undefined,
     createdAt: toFirestoreDate(data.createdAt as Timestamp) ?? new Date(),
   };
 }
@@ -66,6 +69,10 @@ export async function saveExposureRecord(
   return ref.id;
 }
 
+/**
+ * Fetch exposure history for a worker filtered by recent days.
+ * Falls back to unordered query if the composite index is not yet deployed.
+ */
 export async function getWorkerExposureHistory(
   workerId: string,
   days: 7 | 15 | 30 = 15
@@ -73,16 +80,105 @@ export async function getWorkerExposureHistory(
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.EXPOSURE_RECORDS),
-      where('workerId', '==', workerId),
-      where('createdAt', '>=', Timestamp.fromDate(since)),
-      orderBy('createdAt', 'desc')
-    )
-  );
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('workerId', '==', workerId),
+        where('createdAt', '>=', Timestamp.fromDate(since)),
+        orderBy('createdAt', 'desc')
+      )
+    );
+    return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+  } catch (err) {
+    // Composite index may not exist yet — fall back to unordered query
+    console.warn('Exposure history ordered query failed, falling back:', err);
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('workerId', '==', workerId),
+        limit(200)
+      )
+    );
+    const records = snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+    return records
+      .filter((r) => r.createdAt >= since)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+}
 
-  return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+/**
+ * Fetch ALL exposure history for a worker with no date filter.
+ * Used for the "ALL TIME" view in the worker detail page.
+ * Falls back to unordered query if the composite index is missing.
+ */
+export async function getAllWorkerExposureHistory(workerId: string): Promise<ExposureRecord[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('workerId', '==', workerId),
+        orderBy('createdAt', 'desc'),
+        limit(500)
+      )
+    );
+    return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+  } catch (err) {
+    console.warn('All-time exposure ordered query failed, falling back:', err);
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('workerId', '==', workerId),
+        limit(500)
+      )
+    );
+    return snap.docs
+      .map((d) => docToRecord(d.id, d.data() as Record<string, unknown>))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+}
+
+export interface WorkerExposureSummary {
+  totalScans: number;
+  totalMonitoringDays: number;
+  latestDose: number | null;
+  latestDate: Date | null;
+  latestStripExpiry: string | null;
+  latestDosimeterStatus: ExposureRecord['dosimeterStatus'] | null;
+  firstScanDate: Date | null;
+}
+
+/**
+ * Compute a summary of a worker's full exposure history.
+ */
+export async function getWorkerExposureSummary(workerId: string): Promise<WorkerExposureSummary> {
+  const records = await getAllWorkerExposureHistory(workerId);
+  if (records.length === 0) {
+    return {
+      totalScans: 0,
+      totalMonitoringDays: 0,
+      latestDose: null,
+      latestDate: null,
+      latestStripExpiry: null,
+      latestDosimeterStatus: null,
+      firstScanDate: null,
+    };
+  }
+  const sorted = [...records].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const first = sorted[sorted.length - 1];
+  const latest = sorted[0];
+  // Count unique monitoring days
+  const uniqueDays = new Set(records.map((r) => r.createdAt.toDateString())).size;
+
+  return {
+    totalScans: records.length,
+    totalMonitoringDays: uniqueDays,
+    latestDose: latest.estimatedDosePpmH,
+    latestDate: latest.createdAt,
+    latestStripExpiry: latest.stripExpiryDate ?? null,
+    latestDosimeterStatus: latest.dosimeterStatus,
+    firstScanDate: first.createdAt,
+  };
 }
 
 export async function getAllExposureRecords(limitCount = 50): Promise<ExposureRecord[]> {
@@ -157,4 +253,33 @@ export async function updateScanStatus(
     reviewerRemarks: remarks,
     updatedAt: serverTimestamp(),
   });
+}
+
+/**
+ * Fetch all exposure records for workers managed by a given manager.
+ * Used for manager-level export.
+ */
+export async function getExposureRecordsByManager(managerId: string): Promise<ExposureRecord[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('managerId', '==', managerId),
+        orderBy('createdAt', 'desc'),
+        limit(1000)
+      )
+    );
+    return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+  } catch {
+    const snap = await getDocs(
+      query(
+        collection(db, COLLECTIONS.EXPOSURE_RECORDS),
+        where('managerId', '==', managerId),
+        limit(1000)
+      )
+    );
+    return snap.docs
+      .map((d) => docToRecord(d.id, d.data() as Record<string, unknown>))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
 }

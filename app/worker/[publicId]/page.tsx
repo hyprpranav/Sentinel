@@ -30,7 +30,7 @@ export default async function PublicWorkerProfile({ params }: { params: Promise<
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 480 }}>
+      <div style={{ width: '100%' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <SentinelLogo size="md" />
           <ThemeToggle />

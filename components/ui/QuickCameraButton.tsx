@@ -6,6 +6,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary/config';
 import { analyzeDosimeterImage } from '@/services/mockAiService';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getWorkerByUid } from '@/services/workerService';
 
 interface QuickCameraButtonProps {
   userId: string;
@@ -119,11 +120,16 @@ export function QuickCameraButton({ userId, role, displayName, variant = 'icon' 
 
       // 3. Save to Firestore
       if (role === 'worker') {
+        const workerDoc = await getWorkerByUid(userId);
+        const actualWorkerId = workerDoc ? workerDoc.id : userId;
+        const actualManagerId = workerDoc ? (workerDoc.managerId || 'self') : 'self';
+        const actualWorkerName = workerDoc ? workerDoc.fullName : (displayName ?? '');
+
         // Create an exposure record directly so it shows up in their heatmap
         await addDoc(collection(db, 'exposureRecords'), {
-          workerId: userId,
-          workerName: displayName ?? '',
-          managerId: 'self',
+          workerId: actualWorkerId,
+          workerName: actualWorkerName,
+          managerId: actualManagerId,
           timestamp: serverTimestamp(),
           shift: 'morning',
           imageUrl: result.secure_url,
@@ -135,6 +141,9 @@ export function QuickCameraButton({ userId, role, displayName, variant = 'icon' 
           dosimeterStatus: 'active',
           status: 'approved',
           isPublicVisible: false,
+          capturedByUid: userId,
+          capturedByRole: role,
+          capturedByName: displayName ?? '',
           createdAt: serverTimestamp(),
         });
       } else {
