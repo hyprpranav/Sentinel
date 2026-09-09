@@ -9,6 +9,7 @@ import { formatDose } from '@/lib/utils/formatting';
 import { DosimeterBadge, RequestStatusBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
 import {
   Users, UserCheck, ScanLine, ClipboardList,
   AlertTriangle, Shield, Activity, TrendingUp,
@@ -120,6 +121,8 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
+
+          <WeatherAnalyticsCard />
 
           {/* Recent Scans */}
           <div className="card card-flush">

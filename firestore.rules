@@ -39,7 +39,7 @@ service cloud.firestore {
         || (isManagerOrAdmin() && resource.data.role == 'worker' && request.resource.data.role == 'worker')
         || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isManagerOrAdmin() && resource.data.role == 'worker');
     }
 
     // WORKERS COLLECTION
@@ -47,7 +47,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() || resource.data.status == 'active';
       allow create: if isManagerOrAdmin();
       allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
-      allow delete: if isAdmin();
+      allow delete: if isManagerOrAdmin();
     }
 
     match /managers/{managerId} {
@@ -79,9 +79,9 @@ service cloud.firestore {
         || (isAuthenticated() && exists(/databases/$(database)/documents/workers/$(request.resource.data.workerId))
             && get(/databases/$(database)/documents/workers/$(request.resource.data.workerId)).data.uid == request.auth.uid);
 
-      // Only admins can update/delete (for corrections or appeals)
+      // Only managers/admins can delete exposure records
       allow update: if isAdmin();
-      allow delete: if false;
+      allow delete: if isManagerOrAdmin();
     }
 
     // WORKER REQUESTS

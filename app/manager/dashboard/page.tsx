@@ -13,10 +13,15 @@ import { timeAgo, getGreeting } from '@/lib/utils/date';
 import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
 import { ScanLine, Users, ClipboardList, AlertTriangle, ChevronRight } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { COLLECTIONS } from '@/lib/firebase/firestore';
 
 export default function ManagerDashboard() {
   const { user, displayName } = useAuthContext();
+  const [managerName, setManagerName] = useState<string | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [scans, setScans] = useState<ExposureRecord[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -24,6 +29,12 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (!user) return;
+    getDoc(doc(db, COLLECTIONS.MANAGERS, user.uid))
+      .then((snap) => {
+        if (snap.exists()) setManagerName(snap.data().fullName);
+      })
+      .catch(() => {});
+
     Promise.all([
       getWorkersByManager(user.uid),
       getRecentScans(user.uid, 8),
@@ -35,7 +46,8 @@ export default function ManagerDashboard() {
     }).finally(() => setLoading(false));
   }, [user]);
 
-  const firstName = displayName?.split(' ')[0] ?? 'Manager';
+  const activeName = managerName || displayName || 'Manager';
+  const firstName = activeName.split(' ')[0];
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayScans = scans.filter((s) => new Date(s.createdAt) >= today).length;
   const needsAttention = workers.filter((w) =>
@@ -106,6 +118,8 @@ export default function ManagerDashboard() {
               </div>
             ))}
           </div>
+
+          <WeatherAnalyticsCard />
 
           <div className="two-col">
             {/* Recent Scans */}

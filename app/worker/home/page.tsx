@@ -13,6 +13,7 @@ import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
+import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
 import { Activity, Info } from 'lucide-react';
 
 export default function WorkerHome() {
@@ -103,7 +104,8 @@ export default function WorkerHome() {
     load();
   }, [user]);
 
-  const firstName = displayName?.split(' ')[0] ?? 'Worker';
+  const currentFullName = workerProfile?.fullName || displayName || 'Worker';
+  const firstName = currentFullName.split(' ')[0];
 
   return (
     <div>
@@ -169,6 +171,8 @@ export default function WorkerHome() {
           </div>
 
           <ActivityHeatmap records={recentScans} days={30} />
+
+          <WeatherAnalyticsCard />
 
           {/* Latest exposure record */}
           {latestRecord ? (

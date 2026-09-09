@@ -334,28 +334,37 @@ export async function getPastWorkerRequests(): Promise<WorkerRequest[]> {
 }
 
 export async function deleteWorker(workerId: string): Promise<void> {
-  const workerSnap = await getDoc(doc(db, COLLECTIONS.WORKERS, workerId));
+  const { writeBatch } = await import('firebase/firestore');
+  const workerRef = doc(db, COLLECTIONS.WORKERS, workerId);
+  const workerSnap = await getDoc(workerRef);
   if (!workerSnap.exists()) throw new Error('Worker not found');
   const workerData = workerSnap.data();
 
-  const batch = [];
-  batch.push(
-    updateDoc(doc(db, COLLECTIONS.WORKERS, workerId), {
-      status: 'inactive',
-      updatedAt: serverTimestamp(),
-    })
-  );
+  const batch = writeBatch(db);
 
+  // 1. Delete worker document
+  batch.delete(workerRef);
+
+  // 2. Delete user authentication doc if exists
   if (workerData.uid) {
-    batch.push(
-      updateDoc(doc(db, COLLECTIONS.USERS, workerData.uid), {
-        isActive: false,
-        updatedAt: serverTimestamp(),
-      })
-    );
+    batch.delete(doc(db, COLLECTIONS.USERS, workerData.uid));
   }
 
-  await Promise.all(batch);
+  // 3. Delete any worker requests matching this uid or worker
+  if (workerData.uid) {
+    const reqSnap = await getDocs(
+      query(collection(db, COLLECTIONS.WORKER_REQUESTS), where('uid', '==', workerData.uid))
+    );
+    reqSnap.docs.forEach((d) => batch.delete(d.ref));
+  }
+
+  // 4. Delete exposure records for this worker
+  const expSnap = await getDocs(
+    query(collection(db, COLLECTIONS.EXPOSURE_RECORDS), where('workerId', '==', workerId))
+  );
+  expSnap.docs.forEach((d) => batch.delete(d.ref));
+
+  await batch.commit();
 }
 
 export async function deleteAllWorkers(): Promise<number> {

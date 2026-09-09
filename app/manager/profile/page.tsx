@@ -1,8 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase/config';
+import { updateProfile } from 'firebase/auth';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
 import { logoutUser } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -92,7 +93,30 @@ export default function ManagerProfilePage() {
         guardianName: formData.guardianName,
         guardianContact: formData.guardianContact,
         profilePhotoUrl,
+        updatedAt: serverTimestamp(),
       });
+
+      // Synchronize Firebase Auth displayName
+      if (auth.currentUser) {
+        try {
+          await updateProfile(auth.currentUser, { displayName: formData.fullName });
+        } catch (e) {
+          console.warn('Auth displayName update failed:', e);
+        }
+      }
+
+      // Synchronize Users collection
+      if (user?.uid) {
+        try {
+          await updateDoc(doc(db, COLLECTIONS.USERS, user.uid), {
+            displayName: formData.fullName,
+            updatedAt: serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn('Users collection update failed:', e);
+        }
+      }
+
       setSuccess('Profile updated successfully.');
       setManager({ ...manager, ...formData });
     } catch (err) {

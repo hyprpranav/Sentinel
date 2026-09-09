@@ -148,28 +148,34 @@ export async function getPastManagerRequests(): Promise<ManagerRequest[]> {
 }
 
 export async function deleteManager(managerId: string): Promise<void> {
-  const managerSnap = await getDoc(doc(db, COLLECTIONS.MANAGERS, managerId));
-  if (!managerSnap.exists()) throw new Error('Manager not found');
-  const managerData = managerSnap.data();
+  const { writeBatch } = await import('firebase/firestore');
+  const batch = writeBatch(db);
 
-  const batch = [];
-  batch.push(
-    updateDoc(doc(db, COLLECTIONS.MANAGERS, managerId), {
-      status: 'inactive',
-      updatedAt: serverTimestamp(),
-    })
-  );
+  // Try fetching by managerId (which may be doc ID or UID)
+  let managerRef = doc(db, COLLECTIONS.MANAGERS, managerId);
+  let managerSnap = await getDoc(managerRef);
+  let uid = managerId;
 
-  if (managerData.uid) {
-    batch.push(
-      updateDoc(doc(db, COLLECTIONS.USERS, managerData.uid), {
-        isActive: false,
-        updatedAt: serverTimestamp(),
-      })
-    );
+  if (managerSnap.exists()) {
+    batch.delete(managerRef);
+    uid = managerSnap.data().uid || managerId;
+  } else {
+    // Try querying by uid
+    const qSnap = await getDocs(query(collection(db, COLLECTIONS.MANAGERS), where('uid', '==', managerId)));
+    if (!qSnap.empty) {
+      qSnap.docs.forEach((d) => batch.delete(d.ref));
+    }
   }
 
-  await Promise.all(batch);
+  // Delete user doc
+  if (uid) {
+    batch.delete(doc(db, COLLECTIONS.USERS, uid));
+    // Delete manager requests
+    const reqSnap = await getDocs(query(collection(db, 'managerRequests'), where('uid', '==', uid)));
+    reqSnap.docs.forEach((d) => batch.delete(d.ref));
+  }
+
+  await batch.commit();
 }
 
 export async function deleteAllManagers(): Promise<number> {

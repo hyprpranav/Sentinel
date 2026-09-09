@@ -8,7 +8,7 @@ import { AppUser } from '@/types/user';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
-import { deleteAllManagers } from '@/services/managerService';
+import { deleteAllManagers, deleteManager } from '@/services/managerService';
 import { UserCheck, Shield, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import { Download } from 'lucide-react';
 import { generateQRDataUrl } from '@/lib/qr/generator';
@@ -18,6 +18,7 @@ export default function AdminManagersPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [managerToDelete, setManagerToDelete] = useState<AppUser | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +58,18 @@ export default function AdminManagersPage() {
       console.error(err);
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const handleDeleteSingleManager = async () => {
+    if (!managerToDelete) return;
+    try {
+      await deleteManager(managerToDelete.uid);
+      setManagers((prev) => prev.filter((m) => m.uid !== managerToDelete.uid));
+      setManagerToDelete(null);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete manager');
     }
   };
 
@@ -140,22 +153,35 @@ export default function AdminManagersPage() {
                       </span>
                     </td>
                     <td>
-                      {m.role !== 'admin' && (m as AppUser & { publicId?: string }).publicId && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadManagerQr(m)} title="Regenerate manager QR">
-                          <Download size={15} /> Regenerate QR
-                        </button>
-                      )}
-                      {m.role !== 'admin' && (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => toggleStatus(m)}
-                          disabled={processing === m.uid}
-                        >
-                          {processing === m.uid ? <LoadingSpinner size={14} /> :
-                            m.isActive ? <ToggleRight size={20} color="var(--color-green)" /> : <ToggleLeft size={20} color="var(--color-text-muted)" />
-                          }
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        {m.role !== 'admin' && (m as AppUser & { publicId?: string }).publicId && (
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadManagerQr(m)} title="Regenerate manager QR">
+                            <Download size={15} /> Regenerate QR
+                          </button>
+                        )}
+                        {m.role !== 'admin' && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => toggleStatus(m)}
+                            disabled={processing === m.uid}
+                            title={m.isActive ? 'Disable manager' : 'Enable manager'}
+                          >
+                            {processing === m.uid ? <LoadingSpinner size={14} /> :
+                              m.isActive ? <ToggleRight size={20} color="var(--color-green)" /> : <ToggleLeft size={20} color="var(--color-text-muted)" />
+                            }
+                          </button>
+                        )}
+                        {m.role !== 'admin' && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setManagerToDelete(m)}
+                            style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            title={`Delete manager ${m.displayName}`}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -165,6 +191,7 @@ export default function AdminManagersPage() {
         )}
       </div>
 
+      {/* Delete All Managers Dialog */}
       <PinDeleteDialog
         isOpen={showDeleteAll}
         onClose={() => setShowDeleteAll(false)}
@@ -172,6 +199,16 @@ export default function AdminManagersPage() {
         title="Delete All Managers"
         description="This will permanently delete all manager records and their user accounts from the database. Admin account will not be affected."
         danger="This action cannot be undone. All manager data will be permanently removed."
+      />
+
+      {/* Delete Single Manager Dialog */}
+      <PinDeleteDialog
+        isOpen={!!managerToDelete}
+        onClose={() => setManagerToDelete(null)}
+        onConfirm={handleDeleteSingleManager}
+        title={`Delete Manager ${managerToDelete?.displayName ?? ''}`}
+        description={`This will permanently delete ${managerToDelete?.displayName} (${managerToDelete?.email}) and remove their account from the system.`}
+        danger="This action cannot be undone and permanently deletes this manager."
       />
     </div>
   );

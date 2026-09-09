@@ -44,13 +44,16 @@ export default function AdminWorkersPage() {
     );
   }, [search, workers]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this worker?')) return;
+  const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+
+  const handleDeleteSingle = async () => {
+    if (!workerToDelete) return;
     try {
-      await deleteWorker(id);
-      setWorkers((prev) => prev.filter((w) => w.id !== id));
+      await deleteWorker(workerToDelete.id);
+      setWorkers((prev) => prev.filter((w) => w.id !== workerToDelete.id));
+      setWorkerToDelete(null);
     } catch (e) {
-      alert('Failed to deactivate worker');
+      alert('Failed to delete worker');
       console.error(e);
     }
   };
@@ -172,11 +175,11 @@ export default function AdminWorkersPage() {
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
-                          onClick={() => handleDelete(w.id)}
-                          disabled={w.status === 'inactive'}
-                          style={{ color: '#ef4444' }}
+                          onClick={() => setWorkerToDelete(w)}
+                          style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title={`Delete worker ${w.fullName}`}
                         >
-                          Deactivate
+                          <Trash2 size={14} /> Delete
                         </button>
                       </div>
                     </td>
@@ -188,6 +191,7 @@ export default function AdminWorkersPage() {
         )}
       </div>
 
+      {/* Delete All Workers Dialog */}
       <PinDeleteDialog
         isOpen={showDeleteAll}
         onClose={() => setShowDeleteAll(false)}
@@ -195,6 +199,16 @@ export default function AdminWorkersPage() {
         title="Delete All Workers"
         description="This will permanently delete all worker records, their user accounts, and all associated requests from the database."
         danger="This action cannot be undone. All worker data will be permanently removed."
+      />
+
+      {/* Delete Single Worker Dialog */}
+      <PinDeleteDialog
+        isOpen={!!workerToDelete}
+        onClose={() => setWorkerToDelete(null)}
+        onConfirm={handleDeleteSingle}
+        title={`Delete Worker ${workerToDelete?.fullName ?? ''}`}
+        description={`This will permanently remove ${workerToDelete?.fullName} (${workerToDelete?.publicId}) from the database along with their user account and exposure records.`}
+        danger="This action is irreversible and completely removes this worker's data."
       />
     </div>
   );

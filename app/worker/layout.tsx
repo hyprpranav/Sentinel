@@ -12,12 +12,28 @@ import { QuickCameraButton } from '@/components/ui/QuickCameraButton';
 import { WorkerSidebar } from '@/components/layout/WorkerSidebar';
 import { Menu } from 'lucide-react';
 
+import { query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { COLLECTIONS } from '@/lib/firebase/firestore';
+
 function WorkerShell({ children }: { children: React.ReactNode }) {
-  const { user, role, loading } = useAuthContext();
+  const { user, role, loading, displayName } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [workerName, setWorkerName] = useState<string | null>(null);
   const isPublicWorkerProfile = /^\/worker\/SW\d+$/i.test(pathname);
+
+  useEffect(() => {
+    if (!user) return;
+    getDocs(query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', user.uid), limit(1)))
+      .then((snap) => {
+        if (!snap.empty) {
+          setWorkerName(snap.docs[0].data().fullName);
+        }
+      })
+      .catch(console.error);
+  }, [user]);
 
   useEffect(() => {
     if (isPublicWorkerProfile) return;
@@ -32,9 +48,11 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
   if (loading) return <LoadingScreen message="Loading SENTINEL..." />;
   if (!user || role !== 'worker') return null;
 
+  const activeName = workerName || displayName || user.displayName;
+
   return (
     <div className="app-shell worker-shell" style={{ minHeight: '100dvh', background: 'var(--color-bg)' }}>
-      <WorkerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} displayName={user.displayName} />
+      <WorkerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} displayName={activeName} />
       {/* Simple worker top bar */}
       <header style={{
         position: 'fixed', top: 0, left: 0, right: 0,
@@ -49,14 +67,14 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
         <button className="btn btn-ghost btn-icon worker-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open worker navigation"><Menu size={20} aria-hidden="true" /></button>
         <SentinelLogo size="sm" />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <QuickCameraButton userId={user.uid} role="worker" displayName={user.displayName} />
+          <QuickCameraButton userId={user.uid} role="worker" displayName={activeName} />
           <ThemeToggle />
         </div>
       </header>
 
       <main className="worker-main">
         <div style={{ marginBottom: '1rem' }}>
-          <QuickCameraButton userId={user.uid} role="worker" displayName={user.displayName} variant="card" />
+          <QuickCameraButton userId={user.uid} role="worker" displayName={activeName} variant="card" />
         </div>
         {children}
       </main>
