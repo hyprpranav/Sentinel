@@ -116,7 +116,7 @@ export async function analyseStripImage(
   const meanRgb = extractMeanRgb(fullImageData, strip);
   const meanHsv = rgbToHsv(...meanRgb);
 
-  // Blank reference — top of image by default
+  // Blank reference - top of image by default
   const blankRegion: RegionBounds = {
     x: Math.floor(canvas.width * 0.05),
     y: Math.floor(canvas.height * 0.05),

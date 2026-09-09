@@ -87,7 +87,7 @@ export default function MyQRPage() {
         <p>Your SENTINEL worker identification card</p>
       </div>
 
-      {/* QR Card — printable/downloadable */}
+      {/* QR Card - printable/downloadable */}
       <div
         ref={cardRef}
         className="qr-card"

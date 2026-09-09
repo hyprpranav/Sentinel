@@ -222,7 +222,7 @@ export default function ScanPage() {
           uploadedUrl = up.secure_url;
         } catch {
           // Image upload failure should not block record saving
-          console.warn('Image upload failed — saving record without image URL');
+          console.warn('Image upload failed - saving record without image URL');
         }
       }
 
@@ -243,7 +243,7 @@ export default function ScanPage() {
         dosimeterStatus: worker.dosimeterStatus === 'expired' ? 'expired' : 'valid',
         status: 'approved',
         isPublicVisible: true,
-        notes: isDemoMode ? 'DEMO MODE — Synthetic analysis result' : '',
+          notes: isDemoMode ? 'DEMO MODE - Synthetic analysis result' : '',
       });
 
       await writeAuditLog({
@@ -503,7 +503,7 @@ export default function ScanPage() {
           {isDemoMode && !capturedImage && (
             <div className="card" style={{ marginBottom: '1rem', textAlign: 'center', padding: '2rem' }}>
               <Info size={32} style={{ color: 'var(--color-accent)', margin: '0 auto 0.75rem' }} />
-              <p style={{ fontSize: '0.875rem' }}>Demo Mode active — synthetic colour data will be used for estimation.</p>
+              <p style={{ fontSize: '0.875rem' }}>Demo Mode active - synthetic colour data will be used for estimation.</p>
             </div>
           )}
 

@@ -13,7 +13,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick, title, greeting, actions }: TopBarProps) {
   return (
     <header className="topbar">
-      {/* Hamburger — mobile only */}
+      {/* Hamburger - mobile only */}
       <button
         className="btn btn-ghost btn-icon lg:hidden"
         onClick={onMenuClick}
@@ -22,7 +22,7 @@ export function TopBar({ onMenuClick, title, greeting, actions }: TopBarProps) {
         <Menu size={20} aria-hidden="true" />
       </button>
 
-      {/* Mobile logo — hidden on desktop (sidebar shows logo) */}
+      {/* Mobile logo - hidden on desktop (sidebar shows logo) */}
       <div className="lg:hidden flex-1">
         {greeting ? (
           <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-primary)' }}>

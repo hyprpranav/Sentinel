@@ -100,7 +100,7 @@ export function ManagerSidebar({ isOpen, onClose, displayName }: ManagerSidebarP
           </button>
           {displayName && (
             <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', paddingLeft: '0.25rem' }}>
-              Manager — {displayName}
+              Manager - {displayName}
             </p>
           )}
         </div>

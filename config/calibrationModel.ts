@@ -1,6 +1,6 @@
 // config/calibrationModel.ts
 // ============================================================
-// DEMO CALIBRATION MODEL — v0.1
+// DEMO CALIBRATION MODEL - v0.1
 // ============================================================
 // STATUS: UNVALIDATED_DEMO
 // This is a placeholder linear regression model for prototype

@@ -72,8 +72,8 @@ export default function WorkerDetailsPage({ params }: { params: { workerId: stri
             <div className="w-full space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Department</span><span className="font-medium text-white">{worker.department}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Designation</span><span className="font-medium text-white">{worker.designation}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-white">{worker.email || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-medium text-white">{worker.phone || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-white">{worker.email || 'N/A'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-medium text-white">{worker.phone || 'N/A'}</span></div>
             </div>
           </div>
 

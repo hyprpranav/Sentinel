@@ -1,6 +1,6 @@
 // lib/utils/date.ts
 export function formatDate(date: Date | null | undefined): string {
-  if (!date) return '—';
+  if (!date) return 'N/A';
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -9,7 +9,7 @@ export function formatDate(date: Date | null | undefined): string {
 }
 
 export function formatDateTime(date: Date | null | undefined): string {
-  if (!date) return '—';
+  if (!date) return 'N/A';
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -21,7 +21,7 @@ export function formatDateTime(date: Date | null | undefined): string {
 }
 
 export function timeAgo(date: Date | null | undefined): string {
-  if (!date) return '—';
+  if (!date) return 'N/A';
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return 'Just now';
   const minutes = Math.floor(seconds / 60);

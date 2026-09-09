@@ -29,7 +29,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <TopBar
           onMenuClick={() => setSidebarOpen(true)}
-          greeting={displayName ? `Master Admin — ${displayName}` : 'Master Admin'}
+          greeting={displayName ? `Master Admin - ${displayName}` : 'Master Admin'}
           actions={<QuickCameraButton userId={user.uid} role="admin" displayName={displayName} />}
         />
         <main className="main-content">

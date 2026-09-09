@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SENTINEL — Passive Exposure Intelligence for Safer Workplaces',
+  title: 'SENTINEL - Passive Exposure Intelligence for Safer Workplaces',
   description:
     'SENTINEL is a digital platform for passive colorimetric H₂S exposure dosimeter wristbands. Track, analyse, and manage cumulative H₂S exposure for industrial workers.',
   keywords: ['H2S', 'dosimeter', 'safety', 'industrial', 'MRPL', 'exposure monitoring'],

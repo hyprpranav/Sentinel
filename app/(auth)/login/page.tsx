@@ -165,7 +165,7 @@ function LoginContent() {
         {/* Demo hint */}
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-            SENTINEL — Passive Exposure Intelligence for Safer Workplaces<br />
+              SENTINEL - Passive Exposure Intelligence for Safer Workplaces<br />
             TEAM SENSATION · MRPL · SIH Problem ID 26118
           </p>
         </div>

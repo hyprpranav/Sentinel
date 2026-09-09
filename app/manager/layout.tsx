@@ -35,7 +35,7 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <TopBar
           onMenuClick={() => setSidebarOpen(true)}
-          greeting={displayName ? `Manager — ${displayName}` : 'Manager'}
+          greeting={displayName ? `Manager - ${displayName}` : 'Manager'}
           actions={<QuickCameraButton userId={user.uid} role="manager" displayName={displayName} />}
         />
         <main className="main-content">

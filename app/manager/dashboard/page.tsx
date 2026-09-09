@@ -47,10 +47,10 @@ export default function ManagerDashboard() {
       {/* Greeting */}
       <div className="page-header">
         <h1>{getGreeting()}, {firstName}</h1>
-        <p>Safety overview for today — {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <p>Safety overview for today: {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       </div>
 
-      {/* Primary CTA — Scan */}
+      {/* Primary CTA - Scan */}
       <Link href="/manager/scan" style={{ display: 'block', textDecoration: 'none', marginBottom: '1.75rem' }}>
         <div style={{
           background: 'var(--color-surface-2)',
@@ -123,7 +123,7 @@ export default function ManagerDashboard() {
                       {scans.map((s) => (
                         <tr key={s.id}>
                           <td>
-                            <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{s.workerName ?? '—'}</div>
+                            <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{s.workerName ?? 'N/A'}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{s.workerPublicId}</div>
                           </td>
                           <td style={{ fontWeight: 600, fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>

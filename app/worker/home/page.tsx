@@ -204,7 +204,7 @@ export default function WorkerHome() {
               <div className="alert alert-info" style={{ marginTop: '0.75rem' }}>
                 <Info size={14} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '0.8125rem' }}>
-                  This is an estimated cumulative value from your passive H₂S sensing strip — not a real-time concentration reading.
+                  This is an estimated cumulative value from your passive H₂S sensing strip - not a real-time concentration reading.
                 </span>
               </div>
             </div>

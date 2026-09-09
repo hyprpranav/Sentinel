@@ -75,7 +75,7 @@ export default function AuditLogsPage() {
                         <Badge label={meta.label} variant={meta.variant} />
                       </td>
                       <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                        {log.targetName ?? '—'}
+                        {log.targetName ?? 'N/A'}
                       </td>
                     </tr>
                   );

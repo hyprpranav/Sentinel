@@ -1,6 +1,6 @@
 // config/demoData.ts
 // ============================================================
-// DEMO DATA — FOR PRESENTATION / PROTOTYPE ONLY
+// DEMO DATA - FOR PRESENTATION / PROTOTYPE ONLY
 // These records are clearly marked as demonstration data.
 // They must NOT be mixed with real production records.
 // ============================================================
@@ -14,7 +14,7 @@ export const DEMO_WORKERS: Partial<Worker>[] = [
   {
     publicId: 'SNT-W-1042',
     fullName: 'Arun Kumar Sharma',
-    department: 'Process Unit — CDU',
+    department: 'Process Unit - CDU',
     designation: 'Process Operator',
     status: 'active',
     dosimeterStatus: 'valid',

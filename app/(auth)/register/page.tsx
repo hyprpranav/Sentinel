@@ -1,5 +1,5 @@
 'use client';
-// app/(auth)/register/page.tsx — unified worker + manager registration
+// app/(auth)/register/page.tsx - unified worker + manager registration
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitWorkerRequest } from '@/services/workerService';
@@ -64,7 +64,7 @@ export default function RegisterPage() {
             profilePhotoUrl = result.secure_url;
           } catch (photoErr) {
             console.warn('Photo upload failed, continuing without photo:', photoErr);
-            // Non-fatal — submit request without photo
+            // Non-fatal - submit request without photo
           }
         }
         const { password: _p, ...requestData } = form;
@@ -242,7 +242,7 @@ export default function RegisterPage() {
                   </label>
                   <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-                    Optional — max 5MB
+                    Optional - max 5MB
                   </p>
                 </div>
               </div>

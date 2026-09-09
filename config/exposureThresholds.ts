@@ -1,6 +1,6 @@
 // config/exposureThresholds.ts
 // OSHA / NIOSH H₂S Occupational Exposure Limits
-// Source references — verify with current regulatory standards before production use.
+// Source references - verify with current regulatory standards before production use.
 
 export const EXPOSURE_THRESHOLDS = {
   // Time-Weighted Average (8-hour) OEL
@@ -12,7 +12,7 @@ export const EXPOSURE_THRESHOLDS = {
   // Immediately Dangerous to Life and Health
   IDLH_PPM: 50,
 
-  // Odour threshold (general awareness — wide range in literature)
+  // Odour threshold (general awareness - wide range in literature)
   ODOUR_THRESHOLD_PPM: 0.01,
 
   // Cumulative dose thresholds (ppm·h)

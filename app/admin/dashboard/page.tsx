@@ -59,8 +59,8 @@ export default function AdminDashboard() {
           if (data.dosimeterStatus === 'expired' || data.dosimeterStatus === 'invalid') invalidDosimeters++;
           scans.push({
             id: d.id,
-            workerName: data.workerName ?? '—',
-            workerPublicId: data.workerPublicId ?? '—',
+            workerName: data.workerName ?? 'N/A',
+            workerPublicId: data.workerPublicId ?? 'N/A',
             estimatedDosePpmH: data.estimatedDosePpmH ?? 0,
             dosimeterStatus: data.dosimeterStatus ?? 'unknown',
             timestamp: ts,

@@ -11,7 +11,7 @@ export function SentinelLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        {/* Shield icon built inline — no emoji */}
+        {/* Shield icon built inline - no emoji */}
         <svg
           width={s.dot * 2.8}
           height={s.dot * 3.2}
