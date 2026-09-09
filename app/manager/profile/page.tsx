@@ -182,7 +182,8 @@ export default function ManagerProfilePage() {
         <div className="bg-navy-card border border-navy-border shadow-lg rounded-xl p-6 mb-6 flex flex-col items-center">
           <h3 className="font-bold mb-2">My Manager QR</h3>
           <p className="text-sm text-gray-400 text-center mb-4">Download your manager identification QR code.</p>
-          <QRCodeDisplay data={manager.publicId} downloadName={`SENTINEL-${manager.publicId}-QR`} />
+          <p className="text-sm font-mono mb-3">{manager.publicId}</p>
+          <QRCodeDisplay data={manager.publicId ?? ''} downloadName={`SENTINEL-${manager.publicId}-QR`} />
         </div>
       )}
     </div>

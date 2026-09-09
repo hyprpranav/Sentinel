@@ -83,14 +83,25 @@ export async function getAllWorkers(): Promise<Worker[]> {
   return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
 }
 export async function getWorkersByManager(managerId: string): Promise<Worker[]> {
-  const snap = await getDocs(
-    query(
+  let snap;
+  try {
+    snap = await getDocs(query(
       collection(db, COLLECTIONS.WORKERS),
       where('managerId', '==', managerId),
       orderBy('fullName', 'asc')
-    )
-  );
-  if (!snap.empty) return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
+    ));
+  } catch {
+    snap = await getDocs(query(
+      collection(db, COLLECTIONS.WORKERS),
+      where('managerId', '==', managerId),
+      limit(200)
+    ));
+  }
+  if (!snap.empty) {
+    return snap.docs
+      .map((d) => docToWorker(d.id, d.data() as Record<string, unknown>))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }
 
   // Legacy approvals were assigned to the admin UID. Keep those workers visible
   // until an administrator reassigns them to a manager.
