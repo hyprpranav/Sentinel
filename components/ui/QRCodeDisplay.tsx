@@ -1,6 +1,6 @@
 'use client';
-import React, { useRef } from 'react';
-import QRCode from 'react-qr-code';
+import React, { useEffect, useState } from 'react';
+import { generateQRDataUrl } from '@/lib/qr/generator';
 import { Download } from 'lucide-react';
 
 interface QRCodeDisplayProps {
@@ -9,41 +9,28 @@ interface QRCodeDisplayProps {
 }
 
 export function QRCodeDisplay({ data, downloadName = 'qrcode' }: QRCodeDisplayProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    generateQRDataUrl(data, 200).then((url) => {
+      if (!cancelled) setQrDataUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [data]);
 
   const handleDownload = () => {
-    if (!svgRef.current) return;
-    const svgElement = svgRef.current.querySelector('svg');
-    if (!svgElement) return;
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      if (ctx) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        const pngFile = canvas.toDataURL('image/png');
-        const downloadLink = document.createElement('a');
-        downloadLink.download = `${downloadName}.png`;
-        downloadLink.href = `${pngFile}`;
-        downloadLink.click();
-      }
-    };
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+    if (!qrDataUrl) return;
+    const downloadLink = document.createElement('a');
+    downloadLink.download = `${downloadName}.png`;
+    downloadLink.href = qrDataUrl;
+    downloadLink.click();
   };
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="bg-white p-4 rounded-xl shadow-inner border-2 border-gray-100" ref={svgRef as unknown as React.RefObject<HTMLDivElement>}>
-        <QRCode 
-          value={data} 
-          size={160} 
-          level="H"
-        />
+      <div className="bg-white p-4 rounded-xl shadow-inner border-2 border-gray-100">
+        {qrDataUrl && <img src={qrDataUrl} alt={`QR code for ${downloadName}`} width={160} height={160} style={{ display: 'block' }} />}
       </div>
       <button 
         onClick={handleDownload}
