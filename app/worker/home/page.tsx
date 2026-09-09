@@ -185,7 +185,7 @@ export default function WorkerHome() {
   const firstName = currentFullName.split(' ')[0];
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem' }}>{getGreeting()}, {firstName}</h1>
         <p style={{ marginTop: '0.25rem' }}>

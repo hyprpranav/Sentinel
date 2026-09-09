@@ -167,15 +167,15 @@ export default function MyExposurePage() {
   const avgDose = records.length > 0 ? (records.reduce((acc, r) => acc + r.estimatedDosePpmH, 0) / records.length) : (summary?.avgDose ?? 0);
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem' }}>Exposure History & Analysis</h1>
         <p>Personal H₂S exposure records, cumulative dosage, and health impact metrics</p>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-        <div className="stat-card">
+      <div className="stats-grid" style={{ marginBottom: '1.5rem', width: '100%' }}>
+        <div className="stat-card" style={{ width: '100%' }}>
           <span className="stat-label">Total Scans</span>
           <span className="stat-value">{totalScans}</span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -183,7 +183,7 @@ export default function MyExposurePage() {
           </span>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card" style={{ width: '100%' }}>
           <span className="stat-label">Times Affected / Exposed</span>
           <span className="stat-value" style={{ color: affectedCount > 0 ? 'var(--color-amber)' : 'var(--color-green)' }}>
             {affectedCount}
@@ -193,7 +193,7 @@ export default function MyExposurePage() {
           </span>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card" style={{ width: '100%' }}>
           <span className="stat-label">Safe Clean Readings</span>
           <span className="stat-value" style={{ color: 'var(--color-green)' }}>
             {safeCount}
@@ -203,7 +203,7 @@ export default function MyExposurePage() {
           </span>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card" style={{ width: '100%' }}>
           <span className="stat-label">Peak Dose Recorded</span>
           <span className="stat-value" style={{ display: 'flex', alignItems: 'baseline', gap: '4px', color: maxDose >= 30 ? '#ef4444' : 'var(--color-text-primary)' }}>
             {formatDose(maxDose)} <span style={{ fontSize: '11px', fontWeight: 500 }}>ppm·h</span>
@@ -219,6 +219,7 @@ export default function MyExposurePage() {
         padding: '0.875rem 1.25rem',
         borderRadius: 'var(--radius-md)',
         marginBottom: '1.5rem',
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         gap: '0.75rem',
@@ -248,11 +249,11 @@ export default function MyExposurePage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem', width: '100%' }}>
           <LoadingSpinner size={24} />
         </div>
       ) : records.length === 0 ? (
-        <div className="card">
+        <div className="card" style={{ width: '100%' }}>
           <EmptyState
             icon={Activity}
             title="No exposure history logged yet"
@@ -260,7 +261,7 @@ export default function MyExposurePage() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
           {records.map((r) => (
             <div
               key={r.id}
@@ -269,6 +270,7 @@ export default function MyExposurePage() {
                 padding: '1.25rem',
                 border: '1px solid var(--color-border)',
                 background: 'var(--color-surface)',
+                width: '100%',
               }}
             >
               {/* Scan Attribution Tag with Peer Scanner & Manager Timestamps */}

@@ -52,27 +52,36 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell worker-shell" style={{ minHeight: '100dvh', background: 'var(--color-bg)' }}>
       <WorkerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} displayName={activeName} />
-      {/* Simple worker top bar */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, right: 0,
-        height: 'var(--topbar-height)',
-        background: 'var(--color-surface)',
-        borderBottom: '1px solid var(--color-border)',
-        display: 'flex', alignItems: 'center',
-        padding: '0 1.25rem',
-        justifyContent: 'space-between',
-        zIndex: 30,
-      }}>
-        <button className="btn btn-ghost btn-icon worker-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open worker navigation"><Menu size={20} aria-hidden="true" /></button>
-        <SentinelLogo size="sm" />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <ThemeToggle />
-        </div>
-      </header>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Simple worker top bar */}
+        <header
+          className="topbar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 1.25rem',
+            justifyContent: 'space-between',
+            zIndex: 30,
+          }}
+        >
+          <button className="btn btn-ghost btn-icon worker-menu-button lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open worker navigation"><Menu size={20} aria-hidden="true" /></button>
+          <div className="lg:hidden">
+            <SentinelLogo size="sm" />
+          </div>
+          <div className="hidden lg:block">
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              Worker Portal{activeName ? ` · ${activeName}` : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <ThemeToggle />
+          </div>
+        </header>
 
-      <main className="worker-main">
-        {children}
-      </main>
+        <main className="worker-main">
+          {children}
+        </main>
+      </div>
 
       <WorkerBottomNav />
     </div>

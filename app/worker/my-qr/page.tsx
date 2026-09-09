@@ -81,7 +81,7 @@ export default function MyQRPage() {
   }
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem' }}>My QR Card</h1>
         <p>Your SENTINEL worker identification card</p>

@@ -61,7 +61,7 @@ export default function WorkerExportPage() {
   };
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div className="page-header">
         <h1>Export My Data</h1>
         <p>Download your personal H₂S exposure history as a CSV file</p>
