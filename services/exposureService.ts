@@ -1,8 +1,8 @@
-// services/exposureService.ts
 import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   where,
   orderBy,
@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/lib/firebase/firestore';
-import { ExposureRecord } from '@/types/exposure';
+import { ExposureRecord, ScanApprovalRequest } from '@/types/exposure';
 import { toFirestoreDate } from '@/lib/utils/date';
 
 function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord {
@@ -23,28 +23,42 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
     workerId: data.workerId as string,
     workerName: data.workerName as string | undefined,
     workerPublicId: data.workerPublicId as string | undefined,
-    managerId: data.managerId as string,
+    managerId: (data.managerId as string) || '',
     managerName: data.managerName as string | undefined,
     timestamp: toFirestoreDate(data.timestamp as Timestamp) ?? new Date(),
-    shift: data.shift as ExposureRecord['shift'],
+    shift: (data.shift as ExposureRecord['shift']) || 'morning',
     cartridgeId: data.cartridgeId as string | undefined,
     imageUrl: data.imageUrl as string | undefined,
     stripExpiryDate: data.stripExpiryDate as string | undefined,
-    estimatedDosePpmH: data.estimatedDosePpmH as number,
-    monitoringDuration: data.monitoringDuration as number,
-    estimatedAverageExposure: data.estimatedAverageExposure as number,
-    temperature: data.temperature as number | undefined,
-    humidity: data.humidity as number | undefined,
+    detectedExpiryDate: (data.detectedExpiryDate as string) || (data.stripExpiryDate as string) || undefined,
+    expiryStatus: data.expiryStatus as ExposureRecord['expiryStatus'],
+    estimatedDosePpmH: Number(data.estimatedDosePpmH) || 0,
+    monitoringDuration: Number(data.monitoringDuration) || 8,
+    estimatedAverageExposure: Number(data.estimatedAverageExposure) || 0,
+    estimatedTwa: data.estimatedTwa !== undefined ? Number(data.estimatedTwa) : undefined,
+    colorChangePercent: data.colorChangePercent !== undefined ? Number(data.colorChangePercent) : undefined,
+    detectedColor: data.detectedColor as string | undefined,
+    referenceColor: data.referenceColor as string | undefined,
+    temperature: data.temperature !== undefined ? Number(data.temperature) : undefined,
+    humidity: data.humidity !== undefined ? Number(data.humidity) : undefined,
+    location: data.location as string | undefined,
+    weather: data.weather as string | undefined,
+    environmentalCorrection: data.environmentalCorrection !== undefined ? Number(data.environmentalCorrection) : undefined,
     colourFeatures: data.colourFeatures as ExposureRecord['colourFeatures'],
-    calibrationModelVersion: data.calibrationModelVersion as string,
-    dosimeterStatus: data.dosimeterStatus as ExposureRecord['dosimeterStatus'],
+    calibrationModelVersion: (data.calibrationModelVersion as string) || 'demo-v0.1',
+    dosimeterStatus: (data.dosimeterStatus as ExposureRecord['dosimeterStatus']) || 'valid',
+    analysisStatus: data.analysisStatus as ExposureRecord['analysisStatus'],
+    confirmationStatus: data.confirmationStatus as ExposureRecord['confirmationStatus'],
     notes: data.notes as string | undefined,
     status: (data.status as ExposureRecord['status']) || 'pending',
     reviewerRemarks: data.reviewerRemarks as string | undefined,
-    isPublicVisible: data.isPublicVisible as boolean ?? false,
+    isPublicVisible: (data.isPublicVisible as boolean) ?? false,
     capturedByUid: data.capturedByUid as string | undefined,
     capturedByRole: data.capturedByRole as ExposureRecord['capturedByRole'],
     capturedByName: data.capturedByName as string | undefined,
+    qrId: data.qrId as string | undefined,
+    scanDate: data.scanDate as string | undefined,
+    scanTime: data.scanTime as string | undefined,
     createdAt: toFirestoreDate(data.createdAt as Timestamp) ?? new Date(),
   };
 }
@@ -52,8 +66,14 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
 export async function saveExposureRecord(
   record: Omit<ExposureRecord, 'id' | 'createdAt'>
 ): Promise<string> {
+  const now = new Date();
+  const scanDate = record.scanDate || now.toISOString().split('T')[0];
+  const scanTime = record.scanTime || now.toLocaleTimeString('en-IN', { hour12: false });
+
   const ref = await addDoc(collection(db, COLLECTIONS.EXPOSURE_RECORDS), {
     ...record,
+    scanDate,
+    scanTime,
     timestamp: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
@@ -282,4 +302,170 @@ export async function getExposureRecordsByManager(managerId: string): Promise<Ex
       .map((d) => docToRecord(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
+}
+
+/**
+ * ============================================================
+ * WORKER-TO-WORKER SCAN APPROVAL WORKFLOW
+ * ============================================================
+ */
+
+export async function createScanApprovalRequest(
+  data: Omit<ScanApprovalRequest, 'id' | 'createdAt' | 'status'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'scanApprovals'), {
+    ...data,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function getPendingScanApprovals(): Promise<ScanApprovalRequest[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'scanApprovals'),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      )
+    );
+    return snap.docs.map((d) => {
+      const r = d.data();
+      return {
+        id: d.id,
+        scannerUid: r.scannerUid,
+        scannerWorkerId: r.scannerWorkerId,
+        scannerName: r.scannerName,
+        scannerRole: r.scannerRole || 'worker',
+        targetWorkerId: r.targetWorkerId,
+        targetWorkerName: r.targetWorkerName,
+        targetWorkerPublicId: r.targetWorkerPublicId,
+        imageUrl: r.imageUrl,
+        scanTimestamp: toFirestoreDate(r.scanTimestamp as Timestamp) ?? new Date(),
+        shift: r.shift || 'morning',
+        monitoringDuration: Number(r.monitoringDuration) || 8,
+        estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+        estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+        estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+        colorChangePercent: Number(r.colorChangePercent) || 0,
+        temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+        humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+        location: r.location,
+        weather: r.weather,
+        environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+        detectedExpiryDate: r.detectedExpiryDate,
+        expiryStatus: r.expiryStatus,
+        status: r.status || 'pending',
+        createdAt: toFirestoreDate(r.createdAt as Timestamp) ?? new Date(),
+      } as ScanApprovalRequest;
+    });
+  } catch {
+    const snap = await getDocs(
+      query(collection(db, 'scanApprovals'), where('status', '==', 'pending'), limit(50))
+    );
+    return snap.docs.map((d) => {
+      const r = d.data();
+      return {
+        id: d.id,
+        scannerUid: r.scannerUid,
+        scannerWorkerId: r.scannerWorkerId,
+        scannerName: r.scannerName,
+        scannerRole: r.scannerRole || 'worker',
+        targetWorkerId: r.targetWorkerId,
+        targetWorkerName: r.targetWorkerName,
+        targetWorkerPublicId: r.targetWorkerPublicId,
+        imageUrl: r.imageUrl,
+        scanTimestamp: toFirestoreDate(r.scanTimestamp as Timestamp) ?? new Date(),
+        shift: r.shift || 'morning',
+        monitoringDuration: Number(r.monitoringDuration) || 8,
+        estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+        estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+        estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+        colorChangePercent: Number(r.colorChangePercent) || 0,
+        temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+        humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+        location: r.location,
+        weather: r.weather,
+        environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+        detectedExpiryDate: r.detectedExpiryDate,
+        expiryStatus: r.expiryStatus,
+        status: r.status || 'pending',
+        createdAt: toFirestoreDate(r.createdAt as Timestamp) ?? new Date(),
+      } as ScanApprovalRequest;
+    }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+}
+
+export async function approveScanRequest(
+  requestId: string,
+  reviewerUid: string,
+  reviewerName: string
+): Promise<string> {
+  const reqRef = doc(db, 'scanApprovals', requestId);
+  const reqSnap = await getDoc(reqRef);
+  if (!reqSnap.exists()) throw new Error('Scan approval request not found');
+  const reqData = reqSnap.data();
+
+  // Create permanent finalized exposure record for target worker
+  const recordId = await saveExposureRecord({
+    workerId: reqData.targetWorkerId,
+    workerName: reqData.targetWorkerName,
+    workerPublicId: reqData.targetWorkerPublicId,
+    managerId: reviewerUid,
+    managerName: reviewerName,
+    timestamp: toFirestoreDate(reqData.scanTimestamp as Timestamp) ?? new Date(),
+    shift: reqData.shift || 'morning',
+    imageUrl: reqData.imageUrl,
+    stripExpiryDate: reqData.detectedExpiryDate,
+    detectedExpiryDate: reqData.detectedExpiryDate,
+    expiryStatus: reqData.expiryStatus,
+    estimatedDosePpmH: reqData.estimatedDosePpmH,
+    monitoringDuration: reqData.monitoringDuration,
+    estimatedAverageExposure: reqData.estimatedAverageExposure,
+    estimatedTwa: reqData.estimatedTwa,
+    colorChangePercent: reqData.colorChangePercent,
+    temperature: reqData.temperature,
+    humidity: reqData.humidity,
+    location: reqData.location,
+    weather: reqData.weather,
+    environmentalCorrection: reqData.environmentalCorrection,
+    calibrationModelVersion: 'demo-v0.1',
+    dosimeterStatus: reqData.expiryStatus === 'EXPIRED' ? 'expired' : 'valid',
+    status: 'approved',
+    isPublicVisible: false,
+    capturedByUid: reqData.scannerUid,
+    capturedByRole: 'worker',
+    capturedByName: reqData.scannerName,
+    notes: `Worker-to-worker scan by ${reqData.scannerName}. Approved by ${reviewerName}.`,
+    confirmationStatus: 'approved',
+  });
+
+  // Mark approval request as approved
+  await updateDoc(reqRef, {
+    status: 'approved',
+    reviewedByUid: reviewerUid,
+    reviewedByName: reviewerName,
+    reviewedAt: serverTimestamp(),
+    exposureRecordId: recordId,
+  });
+
+  return recordId;
+}
+
+export async function rejectScanRequest(
+  requestId: string,
+  reviewerUid: string,
+  reviewerName: string,
+  reason: string
+): Promise<void> {
+  const reqRef = doc(db, 'scanApprovals', requestId);
+  await updateDoc(reqRef, {
+    status: 'rejected',
+    rejectionReason: reason,
+    reviewedByUid: reviewerUid,
+    reviewedByName: reviewerName,
+    reviewedAt: serverTimestamp(),
+  });
 }

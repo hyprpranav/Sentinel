@@ -87,50 +87,137 @@ export default function MyQRPage() {
         <p>Your SENTINEL worker identification card</p>
       </div>
 
-      {/* QR Card - printable/downloadable */}
+      {/* Physical Watch-Style Sensing Cartridge / Strip Card */}
       <div
         ref={cardRef}
         className="qr-card"
-        style={{ marginBottom: '1.25rem' }}
+        style={{
+          marginBottom: '1.25rem',
+          background: '#ffffff',
+          borderRadius: '16px',
+          border: '2px solid #0284c7',
+          padding: '1.25rem 1.5rem',
+          boxShadow: '0 8px 24px rgba(2, 132, 199, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}
         id="worker-qr-card"
       >
-        {qrDataUrl && (
-          <div style={{ flexShrink: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={qrDataUrl}
-              alt={`QR code for ${worker.publicId}`}
-              width={110}
-              height={110}
-              style={{ display: 'block' }}
-            />
+        {/* Cartridge Header Bar */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid #e2e8f0',
+          paddingBottom: '0.625rem'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 800, letterSpacing: '0.12em', color: '#0284c7', textTransform: 'uppercase' }}>
+              SENTINEL · H₂S WEARABLE DOSIMETER
+            </span>
+            <div style={{ fontSize: '0.625rem', color: '#64748b' }}>
+              PASSIVE COLORIMETRIC CARTRIDGE
+            </div>
           </div>
-        )}
-        <div className="qr-card-body">
-          <div style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.375rem' }}>
-            SENTINEL · MRPL
+          <div style={{
+            background: '#f1f5f9',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            padding: '0.25rem 0.625rem',
+            textAlign: 'right'
+          }}>
+            <span style={{ fontSize: '0.5625rem', color: '#64748b', fontWeight: 600, display: 'block' }}>EXP DATE</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.05em' }}>
+              08/09/2026
+            </span>
           </div>
-          <div className="qr-card-title">{worker.fullName}</div>
-          <div className="qr-card-detail">
-            {worker.publicId}<br />
-            {worker.department}<br />
-            {worker.designation}
+        </div>
+
+        {/* Main Body: QR Code + Worker Name and Worker ID ONLY */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          {qrDataUrl && (
+            <div style={{
+              flexShrink: 0,
+              padding: '0.375rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px'
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrDataUrl}
+                alt={`QR code for ${worker.publicId}`}
+                width={110}
+                height={110}
+                style={{ display: 'block' }}
+              />
+            </div>
+          )}
+          <div className="qr-card-body" style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.125rem' }}>
+              WORKER NAME
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2, marginBottom: '0.625rem' }}>
+              {worker.fullName}
+            </div>
+            
+            <div style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.125rem' }}>
+              WORKER ID
+            </div>
+            <div style={{
+              display: 'inline-block',
+              fontSize: '0.9375rem',
+              fontWeight: 800,
+              color: '#0284c7',
+              background: '#e0f2fe',
+              padding: '0.25rem 0.625rem',
+              borderRadius: '6px',
+              fontFamily: 'monospace',
+              letterSpacing: '0.06em'
+            }}>
+              {worker.publicId}
+            </div>
           </div>
-          <div className="qr-card-id">{worker.publicId}</div>
-          <div className="qr-card-brand">Passive H₂S Dosimeter Wristband</div>
+        </div>
+
+        {/* Passive Colorimetric Sensing Strip Simulation on Cartridge */}
+        <div style={{
+          background: 'linear-gradient(90deg, #f8fafc, #f1f5f9)',
+          border: '1px dashed #94a3b8',
+          borderRadius: '8px',
+          padding: '0.625rem 0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.625rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase' }}>
+              Sensing Element Zone
+            </div>
+            <div style={{ fontSize: '0.5625rem', color: '#64748b' }}>
+              Ag₂S / Passive Lead Acetate indicator
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <span style={{ fontSize: '0.5625rem', color: '#64748b' }}>REF:</span>
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#f8fafc', border: '1px solid #cbd5e1' }} title="0 ppm" />
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fef08a', border: '1px solid #eab308' }} title="10 ppm·h" />
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#d97706', border: '1px solid #b45309' }} title="25 ppm·h" />
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#451a03', border: '1px solid #1c1917' }} title="50+ ppm·h" />
+          </div>
         </div>
       </div>
 
       <button className="btn btn-primary" onClick={handleDownload} style={{ width: '100%', justifyContent: 'center' }}>
-        <Download size={16} /> Download QR Card
+        <Download size={16} /> Download Cartridge QR Card
       </button>
 
       <div className="alert alert-info" style={{ marginTop: '1rem' }}>
         <Info size={15} style={{ flexShrink: 0 }} />
         <span style={{ fontSize: '0.8125rem' }}>
-          This QR card can be attached to your wristband. When scanned by an authorized manager,
-          it identifies you for dosimeter readings. When scanned publicly, it shows only your
-          emergency safety identification.
+          This physical card slides directly into your watch-style wearable dosimeter housing. Next to the QR code, it displays <strong>only your Worker Name and Worker ID</strong>, keeping your personal details secure.
         </span>
       </div>
     </div>

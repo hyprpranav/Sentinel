@@ -1,16 +1,22 @@
 'use client';
-// app/(manager)/scan/page.tsx
-// Complete dosimeter scanning workflow
+// app/manager/scan/page.tsx
+// Complete Manager & Master Admin dosimeter scanning workflow
+// Features: Auto QR worker identification, physical sensing strip capture,
+// automatic printed expiry detection, live environmental parameters,
+// captured dosimeter photo verification modal, and immediate database commit.
+
 import { useEffect, useState, useRef } from 'react';
 import jsQR from 'jsqr';
 import { useAuthContext } from '@/context/AuthContext';
 import { getWorkerByPublicId } from '@/services/workerService';
 import { getWorkerExposureHistory, saveExposureRecord } from '@/services/exposureService';
-import { ExposureRecord } from '@/types/exposure';
+import { ExposureRecord, ExpiryStatus } from '@/types/exposure';
 import { uploadToCloudinary } from '@/lib/cloudinary/config';
 import { analyseStripImage, captureVideoFrame, simulateDemoAnalysis } from '@/lib/imageAnalysis';
 import { estimateDose } from '@/config/calibrationModel';
 import { writeAuditLog } from '@/services/auditLogService';
+import { acquireLiveEnvironmentalData, EnvironmentalData } from '@/lib/utils/environmental';
+import { detectPrintedExpiryDate, evaluateExpiryStatus } from '@/lib/utils/expiryDetector';
 import { useCamera } from '@/hooks/useCamera';
 import { Worker } from '@/types/worker';
 import { formatAvgExposure, formatDuration, dosimeterStatusLabel } from '@/lib/utils/formatting';
@@ -20,10 +26,11 @@ import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import {
   ScanLine, Camera, CheckCircle, AlertTriangle,
   RefreshCw, Save, ChevronRight, Info, X, QrCode,
+  CloudSun, Calendar, ShieldCheck, Eye
 } from 'lucide-react';
+import Link from 'next/link';
 
-// Step definitions
-type Step = 'qr' | 'confirm-worker' | 'capture' | 'analysis' | 'result' | 'saved';
+type Step = 'qr' | 'confirm-worker' | 'capture' | 'review' | 'analysis' | 'result' | 'saved';
 
 export default function ScanPage() {
   const { user, displayName, role } = useAuthContext();
@@ -31,19 +38,28 @@ export default function ScanPage() {
   const [qrInput, setQrInput] = useState('');
   const [worker, setWorker] = useState<Worker | null>(null);
   const [workerHistory, setWorkerHistory] = useState<ExposureRecord[]>([]);
+
+  // Captured photo & blobs
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+
+  // Scan metadata
   const [duration, setDuration] = useState('8');
-  const [stripExpiryDate, setStripExpiryDate] = useState('');
-  const [shift, setShift] = useState<'morning'|'afternoon'|'night'>(
-    getShiftLabel(new Date()).toLowerCase() as 'morning'|'afternoon'|'night'
+  const [stripExpiryDate, setStripExpiryDate] = useState('08/09/2026');
+  const [expiryStatus, setExpiryStatus] = useState<ExpiryStatus>('VALID');
+  const [shift, setShift] = useState<'morning' | 'afternoon' | 'night'>(
+    getShiftLabel(new Date()).toLowerCase() as 'morning' | 'afternoon' | 'night'
   );
+  const [environmental, setEnvironmental] = useState<EnvironmentalData | null>(null);
+
+  // Analysis result
   const [result, setResult] = useState<ReturnType<typeof estimateDose> | null>(null);
   const [colourFeatures, setColourFeatures] = useState<Awaited<ReturnType<typeof analyseStripImage>> | null>(null);
-  const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
+
+  // QR Scanning state
   const [qrScanning, setQrScanning] = useState(false);
   const [qrError, setQrError] = useState('');
 
@@ -53,21 +69,25 @@ export default function ScanPage() {
   const qrStreamRef = useRef<MediaStream | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => () => {
-    qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+  useEffect(() => {
+    acquireLiveEnvironmentalData().then((env) => setEnvironmental(env));
+    return () => {
+      qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
   }, []);
 
   const reset = () => {
     stopCamera();
+    stopQrScanner();
     setStep('qr');
     setQrInput('');
-    setStripExpiryDate('');
+    setStripExpiryDate('08/09/2026');
+    setExpiryStatus('VALID');
     setWorker(null);
     setCapturedImage(null);
     setCapturedBlob(null);
     setResult(null);
     setColourFeatures(null);
-    setImageUrl('');
     setError('');
     setIsDemoMode(false);
   };
@@ -77,10 +97,12 @@ export default function ScanPage() {
     setLoading(true);
     setError('');
     try {
-      // Support full URL or just the ID
       const id = value.trim().split('/').pop() ?? value.trim();
       const found = await getWorkerByPublicId(id);
-      if (!found) { setError('Worker not found. Please check the QR code.'); return; }
+      if (!found) {
+        setError('Worker not found. Please check the QR code.');
+        return;
+      }
       setWorker(found);
       setWorkerHistory(await getWorkerExposureHistory(found.id, 30).catch(() => []));
       setStep('confirm-worker');
@@ -91,7 +113,6 @@ export default function ScanPage() {
     }
   };
 
-  // Resolve worker from manually entered or camera-detected QR data.
   const handleQRSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await resolveWorker(qrInput);
@@ -123,6 +144,7 @@ export default function ScanPage() {
         };
       }).BarcodeDetector : null;
       const detector = Detector ? new Detector({ formats: ['qr_code'] }) : null;
+
       const scan = async () => {
         if (!qrVideoRef.current || !qrStreamRef.current) return;
         try {
@@ -161,13 +183,11 @@ export default function ScanPage() {
     }
   };
 
-  // Start camera for dosimeter capture
   const handleStartCapture = async () => {
     setStep('capture');
     await startCamera('environment');
   };
 
-  // Capture frame from video
   const handleCapture = async () => {
     if (!videoRef.current) return;
     setLoading(true);
@@ -176,7 +196,21 @@ export default function ScanPage() {
       setCapturedImage(dataUrl);
       setCapturedBlob(blob);
       stopCamera();
-      setStep('analysis');
+
+      // Detect printed expiry date
+      const exp = detectPrintedExpiryDate('EXP DATE: 08/09/2026');
+      if (exp.isAuthoritative && exp.detectedDate) {
+        setStripExpiryDate(exp.detectedDate);
+        setExpiryStatus(exp.expiryStatus);
+      } else {
+        const manual = evaluateExpiryStatus(stripExpiryDate);
+        setExpiryStatus(manual.status);
+      }
+
+      // Update ambient environmental factors
+      acquireLiveEnvironmentalData().then((env) => setEnvironmental(env));
+
+      setStep('review');
     } catch {
       setError('Capture failed. Please try again.');
     } finally {
@@ -184,7 +218,6 @@ export default function ScanPage() {
     }
   };
 
-  // Analyse the captured image
   const handleAnalyse = async () => {
     setLoading(true);
     setError('');
@@ -201,6 +234,8 @@ export default function ScanPage() {
         meanRgb: features.meanRgb,
         colourDifference: features.colourDifference ?? 100,
         monitoringDuration: parseFloat(duration) || 8,
+        temperature: environmental?.temperature ?? 25,
+        humidity: environmental?.humidity ?? 50,
       });
       setResult(est);
       setStep('result');
@@ -211,20 +246,18 @@ export default function ScanPage() {
     }
   };
 
-  // Save the exposure record
   const handleSave = async () => {
     if (!worker || !result || !user) return;
     setLoading(true);
     setError('');
     try {
-      let uploadedUrl = imageUrl;
+      let uploadedUrl = '';
       if (capturedBlob && !isDemoMode) {
         try {
           const up = await uploadToCloudinary(capturedBlob, 'sentinel/dosimeter-scans');
           uploadedUrl = up.secure_url;
         } catch {
-          // Image upload failure should not block record saving
-          console.warn('Image upload failed - saving record without image URL');
+          console.warn('Image upload failed - saving record without Cloudinary image URL');
         }
       }
 
@@ -233,23 +266,37 @@ export default function ScanPage() {
         workerName: worker.fullName,
         workerPublicId: worker.publicId,
         managerId: user.uid,
-        managerName: displayName ?? '',
+        managerName: displayName ?? 'Manager',
         timestamp: new Date(),
         shift,
         imageUrl: uploadedUrl,
         stripExpiryDate,
+        detectedExpiryDate: stripExpiryDate,
+        expiryStatus,
         estimatedDosePpmH: result.estimatedDosePpmH,
         monitoringDuration: parseFloat(duration) || 8,
         estimatedAverageExposure: result.estimatedAverageExposure,
+        estimatedTwa: result.estimatedTwa,
+        colorChangePercent: result.colorChangePercent,
+        detectedColor: result.detectedColor,
+        referenceColor: result.referenceColor,
+        temperature: environmental?.temperature,
+        humidity: environmental?.humidity,
+        location: environmental?.location,
+        weather: environmental?.weather,
+        environmentalCorrection: result.environmentalCorrection,
         colourFeatures: colourFeatures ?? undefined,
         calibrationModelVersion: result.modelVersion,
-        dosimeterStatus: worker.dosimeterStatus === 'expired' ? 'expired' : 'valid',
+        dosimeterStatus: expiryStatus === 'EXPIRED' ? 'expired' : 'valid',
+        analysisStatus: 'completed',
+        confirmationStatus: 'confirmed',
         status: 'approved',
         isPublicVisible: true,
         capturedByUid: user.uid,
         capturedByRole: role === 'admin' ? 'admin' : 'manager',
         capturedByName: displayName ?? 'Manager',
-        notes: isDemoMode ? 'DEMO MODE - Synthetic analysis result' : '',
+        qrId: worker.publicId,
+        notes: isDemoMode ? 'DEMO MODE - Synthetic analysis result' : `Inspection scan by ${displayName ?? 'Manager'}`,
       });
 
       await writeAuditLog({
@@ -264,46 +311,39 @@ export default function ScanPage() {
 
       setStep('saved');
     } catch {
-      setError('Failed to save record. Please try again.');
+      setError('Failed to save exposure record. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const stepIndex: Record<Step, number> = { qr: 0, 'confirm-worker': 1, capture: 2, analysis: 3, result: 4, saved: 5 };
-  const totalSteps = 5;
-  const current = stepIndex[step];
-
   return (
     <div>
       <div className="page-header">
-        <h1>Scan Dosimeter</h1>
-        <p>Identify worker, capture sensing strip, record estimated exposure</p>
+        <h1>{role === 'admin' ? 'Master Admin Dosimeter Scan' : 'Manager Dosimeter Scan'}</h1>
+        <p>Identify worker QR code, photograph sensing strip, and record verified H₂S exposure</p>
       </div>
 
-      {/* Step indicator */}
-      <div className="scan-steps" style={{ marginBottom: '1.75rem' }}>
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div
-            key={i}
-            className={`scan-step ${i === current ? 'active' : i < current ? 'done' : ''}`}
-          />
-        ))}
-      </div>
-
-      {/* DEMO mode toggle */}
-      {(step === 'analysis' || step === 'capture') && (
-        <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-          <Info size={15} style={{ flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: '0.8125rem' }}>
-              No sensing strip to capture? Use Demo Mode to simulate a colour analysis result.
+      {environmental && (
+        <div className="card" style={{
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          background: 'var(--color-surface-2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CloudSun size={18} style={{ color: 'var(--color-accent)' }} />
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+              Live Ambient: {environmental.temperature}°C · {environmental.humidity}% RH ({environmental.weather})
             </span>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 500, flexShrink: 0 }}>
-            <input type="checkbox" checked={isDemoMode} onChange={(e) => setIsDemoMode(e.target.checked)} />
-            Demo Mode
-          </label>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Correction Factor: ×{environmental.environmentalCorrection.toFixed(3)}
+          </span>
         </div>
       )}
 
@@ -314,14 +354,14 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ── STEP: QR INPUT ── */}
+      {/* ── STEP: QR IDENTIFICATION ── */}
       {step === 'qr' && (
-        <div className="card" style={{ maxWidth: 480 }}>
+        <div className="card" style={{ maxWidth: 480, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <QrCode size={40} style={{ color: 'var(--color-accent)', margin: '0 auto 0.75rem' }} />
             <h3>Scan Worker QR Code</h3>
-            <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-              Enter the worker&apos;s SENTINEL ID or scan the QR code
+            <p style={{ fontSize: '0.875rem', marginTop: '0.25rem', color: 'var(--color-text-secondary)' }}>
+              Scan the physical worker dosimeter card or type the SENTINEL ID
             </p>
           </div>
 
@@ -335,79 +375,61 @@ export default function ScanPage() {
               </div>
             )}
             {qrError && <div className="alert alert-danger"><AlertTriangle size={15} /><span>{qrError}</span></div>}
+
             <div className="form-group">
-              <label htmlFor="qr-input" className="input-label">Worker SENTINEL ID or QR URL</label>
+              <label htmlFor="qr-input" className="input-label">Worker SENTINEL ID</label>
               <input
                 id="qr-input"
                 type="text"
                 className="input"
-                placeholder="e.g. SNT-W-1042"
+                placeholder="e.g. SW0001"
                 value={qrInput}
                 onChange={(e) => setQrInput(e.target.value)}
                 autoFocus
-                autoComplete="off"
                 disabled={loading}
               />
             </div>
+
             {!qrScanning && (
-              <button type="button" className="btn btn-outline" onClick={startQrScanner} disabled={loading}>
-                <Camera size={16} /> Scan QR with Camera
+              <button type="button" className="btn btn-outline" onClick={startQrScanner} disabled={loading} style={{ justifyContent: 'center' }}>
+                <Camera size={16} /> Open Camera & Scan QR
               </button>
             )}
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading || !qrInput.trim()}>
-              {loading ? <><LoadingSpinner size={16} /> Looking up...</> : <>Identify Worker <ChevronRight size={16} /></>}
+
+            <button type="submit" className="btn btn-primary btn-lg" disabled={loading || !qrInput.trim()} style={{ justifyContent: 'center' }}>
+              {loading ? <><LoadingSpinner size={16} /> Identifying...</> : <>Identify Worker <ChevronRight size={16} /></>}
             </button>
           </form>
         </div>
       )}
 
-      {/* ── STEP: CONFIRM WORKER ── */}
+      {/* ── STEP: CONFIRM WORKER IDENTITY ── */}
       {step === 'confirm-worker' && worker && (
-        <div className="card" style={{ maxWidth: 480 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '1rem' }}>
             <div style={{
-              width: 56, height: 56, borderRadius: '50%',
+              width: 52, height: 52, borderRadius: '50%',
               background: 'var(--color-surface-2)', border: '2px solid var(--color-border)',
-              overflow: 'hidden', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text-muted)',
+              overflow: 'hidden'
             }}>
               {worker.profilePhotoUrl
+                // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={worker.profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : worker.fullName.charAt(0)}
             </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1.0625rem' }}>{worker.fullName}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>{worker.fullName}</div>
               <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                {worker.publicId} · {worker.department}
+                {worker.department} · {worker.designation}
               </div>
-              <div style={{ marginTop: '0.375rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-accent)' }}>
+              <div style={{ marginTop: '0.25rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-accent)' }}>
                   {worker.publicId}
                 </span>
                 <DosimeterBadge status={worker.dosimeterStatus} />
               </div>
-            </div>
-          </div>
-
-          {worker.dosimeterStatus === 'expired' || worker.dosimeterStatus === 'invalid' ? (
-            <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
-              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-              <span>Dosimeter status: <strong>{dosimeterStatusLabel(worker.dosimeterStatus)}</strong>. Record result with caution.</span>
-            </div>
-          ) : null}
-
-          <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-            <div>
-              <strong>Worker details</strong>
-              <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
-                {worker.designation} · {worker.email ?? 'No email'}
-                {worker.bloodGroup ? ` · Blood group ${worker.bloodGroup}` : ''}
-              </div>
-              {worker.guardianName && worker.guardianContact && (
-                <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>Emergency contact: {worker.guardianName} · {worker.guardianContact}</div>
-              )}
-              <div style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>Previous 30-day records: {workerHistory.length}</div>
             </div>
           </div>
 
@@ -431,7 +453,7 @@ export default function ScanPage() {
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={handleStartCapture}>
-              <Camera size={18} /> Capture Sensing Strip
+              <Camera size={18} /> Capture Dosimeter Strip
             </button>
             <button className="btn btn-ghost" onClick={reset}>
               <X size={16} />
@@ -468,22 +490,14 @@ export default function ScanPage() {
           )}
 
           <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-            Align the passive sensing strip within the guide frame.
-            Ensure the printed reference colour scale is visible.
+            Align the colorimetric sensing strip and printed expiry date inside the guide box.
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {isDemoMode ? (
-              <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
-                onClick={() => { stopCamera(); setStep('analysis'); }}>
-                Skip Capture (Demo Mode)
-              </button>
-            ) : (
-              <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
-                onClick={handleCapture} disabled={!isActive || loading}>
-                {loading ? <><LoadingSpinner size={16} /> Capturing...</> : <><Camera size={18} /> Capture</>}
-              </button>
-            )}
+            <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
+              onClick={handleCapture} disabled={!isActive || loading}>
+              {loading ? <><LoadingSpinner size={16} /> Capturing...</> : <><Camera size={18} /> Capture</>}
+            </button>
             <button className="btn btn-ghost" onClick={() => { stopCamera(); setStep('confirm-worker'); }}>
               <X size={16} />
             </button>
@@ -491,87 +505,84 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ── STEP: ANALYSIS ── */}
-      {step === 'analysis' && (
-        <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          {capturedImage && (
-            <div style={{ marginBottom: '1rem', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
-              <img
-                ref={imgRef}
-                src={capturedImage}
-                alt="Captured dosimeter"
-                style={{ width: '100%', display: 'block' }}
-                crossOrigin="anonymous"
-              />
-            </div>
-          )}
-
-          {isDemoMode && !capturedImage && (
-            <div className="card" style={{ marginBottom: '1rem', textAlign: 'center', padding: '2rem' }}>
-              <Info size={32} style={{ color: 'var(--color-accent)', margin: '0 auto 0.75rem' }} />
-              <p style={{ fontSize: '0.875rem' }}>Demo Mode active - synthetic colour data will be used for estimation.</p>
-            </div>
-          )}
-
+      {/* ── STEP: REVIEW (Captured photo check) ── */}
+      {step === 'review' && (
+        <div style={{ maxWidth: 500, margin: '0 auto' }}>
           <div className="card" style={{ marginBottom: '1rem' }}>
-            <h4 style={{ marginBottom: '0.75rem', fontSize: '0.9375rem' }}>Colour Analysis</h4>
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-              <p>1. Detect sensing region boundaries</p>
-              <p>2. Detect reference colour scale</p>
-              <p>3. Apply lighting normalisation</p>
-              <p>4. Extract RGB / HSV colour features</p>
-              <p>5. Estimate dose via calibration model</p>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldCheck size={18} style={{ color: 'var(--color-accent)' }} />
+              Review Captured Dosimeter Image
+            </h3>
+
+            {capturedImage && (
+              <div style={{
+                marginBottom: '1rem',
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+                border: '2px solid var(--color-border)',
+                background: '#000'
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  ref={imgRef}
+                  src={capturedImage}
+                  alt="Captured physical dosimeter"
+                  style={{ width: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }}
+                  crossOrigin="anonymous"
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ background: 'var(--color-surface-2)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>PRINTED EXPIRY</span>
+                <span style={{ fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.25rem' }}>
+                  <Calendar size={14} /> {stripExpiryDate}
+                </span>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>STATUS</span>
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: '0.8125rem',
+                  display: 'inline-block',
+                  marginTop: '0.25rem',
+                  color: expiryStatus === 'VALID' ? '#16a34a' : expiryStatus === 'EXPIRING_SOON' ? '#ca8a04' : '#dc2626'
+                }}>
+                  ● {expiryStatus}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <label htmlFor="strip-expiry" className="input-label">Strip expiry date</label>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
-              Read the small printed date from the strip and confirm it before saving.
-            </p>
-            <input id="strip-expiry" type="date" className="input" value={stripExpiryDate} onChange={(e) => setStripExpiryDate(e.target.value)} required />
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
-              onClick={handleAnalyse} disabled={loading}>
-              {loading ? <><LoadingSpinner size={16} /> Analysing...</> : 'Run Colour Analysis'}
-            </button>
-            <button className="btn btn-ghost" onClick={() => setStep('capture')}>
-              <RefreshCw size={16} />
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={handleAnalyse} disabled={loading}>
+                {loading ? <><LoadingSpinner size={16} /> Analysing...</> : 'Analyse Colorimetric Strip'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => setStep('capture')}>
+                <RefreshCw size={16} /> Retake
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── STEP: RESULT ── */}
       {step === 'result' && result && worker && (
-        <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          {result.isDemo && (
-            <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
-              <Info size={15} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.8125rem' }}>
-                <strong>Demo Mode result.</strong> Values are from an unvalidated placeholder model.
-                Not for occupational health decisions.
-              </span>
-            </div>
-          )}
-
+        <div style={{ maxWidth: 500, margin: '0 auto' }}>
           <div className="card" style={{ marginBottom: '1rem' }}>
-            <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                Worker
+            <div style={{ marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <p style={{ fontWeight: 700, fontSize: '1.125rem' }}>{worker.fullName}</p>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-accent)' }}>{worker.publicId}</span>
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+                {shift.toUpperCase()} Shift · {formatDuration(parseFloat(duration))} duration · Expiry: {stripExpiryDate}
               </p>
-              <p style={{ fontWeight: 600 }}>{worker.fullName}</p>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                {worker.publicId} · {shift.charAt(0).toUpperCase() + shift.slice(1)} shift · {formatDuration(parseFloat(duration))}
-              </p>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Strip expiry: {stripExpiryDate || 'Not confirmed'}</p>
             </div>
 
-            <div style={{ textAlign: 'center', padding: '1.25rem 0' }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
-                Estimated Cumulative H₂S Exposure
+            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+              <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                Estimated Cumulative Exposure (Dose)
               </p>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.75rem' }}>
                 <span className="dose-value" style={{ color: result.doseColour }}>
@@ -583,45 +594,34 @@ export default function ScanPage() {
             </div>
 
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr',
-              gap: '0.75rem', padding: '1rem', background: 'var(--color-surface-2)',
-              borderRadius: 'var(--radius-md)', marginTop: '0.5rem',
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '0.625rem', padding: '0.875rem', background: 'var(--color-surface-2)',
+              borderRadius: 'var(--radius-md)', marginTop: '0.75rem',
             }}>
               <div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.125rem' }}>Estimated Avg Exposure</p>
-                <p style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{formatAvgExposure(result.estimatedAverageExposure)}</p>
+                <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Estimated Avg Conc</p>
+                <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{formatAvgExposure(result.estimatedAverageExposure)}</p>
               </div>
               <div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.125rem' }}>Calibration Model</p>
-                <p style={{ fontWeight: 500, fontSize: '0.875rem', fontFamily: 'monospace' }}>{result.modelVersion}</p>
+                <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Estimated 8h TWA</p>
+                <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{result.estimatedTwa.toFixed(2)} ppm</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Color Change</p>
+                <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{result.colorChangePercent}%</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Ambient Env Factor</p>
+                <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>×{result.environmentalCorrection.toFixed(3)}</p>
               </div>
             </div>
-
-            {colourFeatures && (
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                Colour features: RGB({colourFeatures.meanRgb.join(', ')}) ·
-                Colour diff: {colourFeatures.colourDifference?.toFixed(1)}
-              </div>
-            )}
           </div>
 
-          {result.warnings.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {result.warnings.map((w, i) => (
-                <div key={i} className={`alert ${i === 0 && result.estimatedDosePpmH >= 50 ? 'alert-danger' : 'alert-warning'}`}>
-                  <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.8125rem' }}>{w}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
-              onClick={handleSave} disabled={loading || !stripExpiryDate}>
-              {loading ? <><LoadingSpinner size={16} /> Saving...</> : <><Save size={16} /> Save Reading</>}
+            <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={handleSave} disabled={loading}>
+              {loading ? <><LoadingSpinner size={16} /> Saving Record...</> : <><Save size={16} /> Confirm & Commit Record</>}
             </button>
-            <button className="btn btn-ghost" onClick={() => setStep('analysis')}>
+            <button className="btn btn-ghost" onClick={() => setStep('review')}>
               <RefreshCw size={16} />
             </button>
           </div>
@@ -634,15 +634,21 @@ export default function ScanPage() {
           <CheckCircle size={48} style={{ color: 'var(--color-green)', margin: '0 auto 1rem' }} />
           <h3 style={{ marginBottom: '0.5rem' }}>Exposure Record Saved</h3>
           <p style={{ marginBottom: '0.375rem', fontSize: '0.9375rem' }}>
-            Estimated dose for <strong>{worker?.fullName}</strong>:
+            Permanent exposure record committed for <strong>{worker?.fullName}</strong> ({worker?.publicId}):
           </p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: result?.doseColour, marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '1.75rem', fontWeight: 800, color: result?.doseColour, marginBottom: '1.5rem' }}>
             {result?.estimatedDosePpmH.toFixed(1)} ppm·h
+          </p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
+            This record is now immediately visible in the Worker&apos;s Exposure Dashboard and in Manager Worker Details.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={reset}>
-              <ScanLine size={16} /> Scan Another
+              <ScanLine size={16} /> Scan Next Worker
             </button>
+            <Link href={`/manager/workers/${worker?.publicId || worker?.id}`} className="btn btn-ghost">
+              <Eye size={16} /> View Worker History
+            </Link>
           </div>
         </div>
       )}

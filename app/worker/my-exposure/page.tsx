@@ -48,9 +48,20 @@ export default function MyExposurePage() {
             managerId: r.managerId,
             timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
             shift: r.shift,
+            imageUrl: r.imageUrl,
+            stripExpiryDate: r.stripExpiryDate || r.detectedExpiryDate,
+            detectedExpiryDate: r.detectedExpiryDate,
+            expiryStatus: r.expiryStatus,
+            temperature: r.temperature,
+            humidity: r.humidity,
+            location: r.location,
+            weather: r.weather,
+            environmentalCorrection: r.environmentalCorrection,
+            colorChangePercent: r.colorChangePercent,
             estimatedDosePpmH: r.estimatedDosePpmH,
             monitoringDuration: r.monitoringDuration,
             estimatedAverageExposure: r.estimatedAverageExposure,
+            estimatedTwa: r.estimatedTwa,
             calibrationModelVersion: r.calibrationModelVersion,
             dosimeterStatus: r.dosimeterStatus,
             isPublicVisible: r.isPublicVisible,
@@ -203,11 +214,37 @@ export default function MyExposurePage() {
                 </span>
               </div>
 
+              {/* Environmental and Expiry details */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                {r.temperature !== undefined && r.humidity !== undefined && (
+                  <span>Ambient: {r.temperature}°C · {r.humidity}% RH</span>
+                )}
+                {r.stripExpiryDate && (
+                  <span>Strip Expiry: {r.stripExpiryDate}</span>
+                )}
+                {r.colorChangePercent !== undefined && (
+                  <span>Reaction: {r.colorChangePercent}%</span>
+                )}
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                   Avg: {formatAvgExposure(r.estimatedAverageExposure)}
                 </span>
-                <DosimeterBadge status={r.dosimeterStatus} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {r.imageUrl && (
+                    <a
+                      href={r.imageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                    >
+                      View Photo
+                    </a>
+                  )}
+                  <DosimeterBadge status={r.dosimeterStatus} />
+                </div>
               </div>
             </div>
           ))}

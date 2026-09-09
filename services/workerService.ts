@@ -86,9 +86,37 @@ export async function getWorkerByPublicId(publicId: string): Promise<Worker | nu
 }
 
 export async function getWorkerById(id: string): Promise<Worker | null> {
-  const snap = await getDoc(doc(db, COLLECTIONS.WORKERS, id));
-  if (!snap.exists()) return null;
-  return docToWorker(snap.id, snap.data() as Record<string, unknown>);
+  if (!id) return null;
+  // 1. Check direct Firestore document ID
+  try {
+    const snap = await getDoc(doc(db, COLLECTIONS.WORKERS, id));
+    if (snap.exists()) {
+      return docToWorker(snap.id, snap.data() as Record<string, unknown>);
+    }
+  } catch {
+    // Ignore and proceed to query
+  }
+
+  // 2. Check publicId (e.g. SW0001, SW0002)
+  const cleanId = id.trim().toUpperCase();
+  const publicSnap = await getDocs(
+    query(collection(db, COLLECTIONS.WORKERS), where('publicId', 'in', [id, cleanId]), limit(1))
+  );
+  if (!publicSnap.empty) {
+    const d = publicSnap.docs[0];
+    return docToWorker(d.id, d.data() as Record<string, unknown>);
+  }
+
+  // 3. Check Auth UID
+  const uidSnap = await getDocs(
+    query(collection(db, COLLECTIONS.WORKERS), where('uid', '==', id), limit(1))
+  );
+  if (!uidSnap.empty) {
+    const d = uidSnap.docs[0];
+    return docToWorker(d.id, d.data() as Record<string, unknown>);
+  }
+
+  return null;
 }
 
 /**

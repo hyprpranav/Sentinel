@@ -100,6 +100,11 @@ interface EstimationInput {
 interface EstimationResult {
   estimatedDosePpmH: number;
   estimatedAverageExposure: number; // ppm (dose / duration)
+  estimatedTwa: number; // 8-hour TWA (ppm)
+  colorChangePercent: number;
+  environmentalCorrection: number;
+  detectedColor: string;
+  referenceColor: string;
   doseLabel: string;
   doseColour: string;
   modelVersion: string;
@@ -122,24 +127,34 @@ export function estimateDose(input: EstimationInput): EstimationResult {
 
   rawDose = Math.max(0, rawDose); // dose cannot be negative
 
-  // Temperature compensation (if enabled and data available)
-  if (model.temperatureCompensation.enabled && input.temperature !== undefined) {
-    const tempDelta = input.temperature - model.temperatureCompensation.referenceTemp;
-    rawDose *= 1 + (model.temperatureCompensation.coefficient ?? 0) * tempDelta;
+  // Environmental compensation (Temperature & Humidity)
+  let environmentalCorrection = 1.0;
+  if (input.temperature !== undefined || input.humidity !== undefined) {
+    const temp = input.temperature ?? 25;
+    const hum = input.humidity ?? 50;
+    const tempDelta = temp - 25;
+    const humDelta = hum - 50;
+    environmentalCorrection = 1 + (tempDelta * 0.002) + (humDelta * 0.001);
+    environmentalCorrection = Math.min(1.25, Math.max(0.85, parseFloat(environmentalCorrection.toFixed(4))));
+    rawDose *= environmentalCorrection;
   }
 
-  const estimatedAverageExposure =
-    monitoringDuration > 0 ? rawDose / monitoringDuration : 0;
+  const duration = monitoringDuration > 0 ? monitoringDuration : 8;
+  const estimatedAverageExposure = rawDose / duration;
+  const estimatedTwa = rawDose / 8; // standard 8-hour shift Time Weighted Average
+
+  // Calculate percentage color change from baseline blank (255, 252, 245)
+  const colorChangePercent = Math.min(100, Math.max(0, Math.round((colourDifference / 180) * 100)));
 
   // Find dose range label
   const range = model.doseRanges.find((r) => rawDose >= r.min && rawDose < r.max);
-  const doseLabel = range?.label ?? 'Unknown';
-  const doseColour = range?.colour ?? '#6b7280';
+  const doseLabel = range?.label ?? 'Normal / Low';
+  const doseColour = range?.colour ?? '#16a34a';
 
-  // Build warnings
+  // Build warnings & scientific disclaimers
   const warnings: string[] = [];
   if (rawDose >= model.warningThresholds.immediatelyDangerousPpmH) {
-    warnings.push('CRITICAL: Exposure exceeds immediately dangerous threshold.');
+    warnings.push('CRITICAL: Cumulative exposure exceeds immediately dangerous threshold.');
   }
   if (estimatedAverageExposure > model.warningThresholds.twaOelPpm) {
     warnings.push(
@@ -148,13 +163,18 @@ export function estimateDose(input: EstimationInput): EstimationResult {
   }
   if (model.validationStatus === 'UNVALIDATED_DEMO') {
     warnings.push(
-      'DEMO MODE: This estimate is from an unvalidated placeholder model. Do not use for occupational health decisions.'
+      'PROTOTYPE CALIBRATION: This estimate is derived from a prototype colorimetric response model for demonstration purposes and is not yet scientifically validated.'
     );
   }
 
   return {
     estimatedDosePpmH: parseFloat(rawDose.toFixed(2)),
     estimatedAverageExposure: parseFloat(estimatedAverageExposure.toFixed(3)),
+    estimatedTwa: parseFloat(estimatedTwa.toFixed(3)),
+    colorChangePercent,
+    environmentalCorrection,
+    detectedColor: `rgb(${r}, ${g}, ${b})`,
+    referenceColor: 'rgb(255, 252, 245)',
     doseLabel,
     doseColour,
     modelVersion: model.modelVersion,

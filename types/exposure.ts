@@ -12,6 +12,8 @@ export interface ColourFeatures {
   normalizedDelta?: number;
 }
 
+export type ExpiryStatus = 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' | 'UNREADABLE';
+
 export interface ExposureRecord {
   id: string;
   workerId: string;
@@ -24,14 +26,25 @@ export interface ExposureRecord {
   cartridgeId?: string;
   imageUrl?: string;
   stripExpiryDate?: string;
+  detectedExpiryDate?: string;
+  expiryStatus?: ExpiryStatus;
   estimatedDosePpmH: number;
   monitoringDuration: number; // hours
   estimatedAverageExposure: number; // ppm
+  estimatedTwa?: number; // 8-hour TWA
+  colorChangePercent?: number;
+  detectedColor?: string;
+  referenceColor?: string;
   temperature?: number;
   humidity?: number;
+  location?: string;
+  weather?: string;
+  environmentalCorrection?: number;
   colourFeatures?: ColourFeatures;
   calibrationModelVersion: string;
   dosimeterStatus: DosimeterStatus;
+  analysisStatus?: 'completed' | 'requires_review' | 'demo';
+  confirmationStatus?: 'confirmed' | 'auto_saved' | 'approved';
   notes?: string;
   status: 'pending' | 'approved' | 'rejected';
   reviewerRemarks?: string;
@@ -39,6 +52,42 @@ export interface ExposureRecord {
   capturedByUid?: string;
   capturedByRole?: 'worker' | 'manager' | 'admin';
   capturedByName?: string;
+  qrId?: string;
+  scanDate?: string;
+  scanTime?: string;
+  createdAt: Date;
+}
+
+export interface ScanApprovalRequest {
+  id: string;
+  scannerUid: string;
+  scannerWorkerId?: string;
+  scannerName: string;
+  scannerRole: 'worker';
+  targetWorkerId: string;
+  targetWorkerName: string;
+  targetWorkerPublicId: string;
+  targetWorkerUid?: string;
+  imageUrl: string;
+  scanTimestamp: Date;
+  shift: Shift;
+  monitoringDuration: number;
+  estimatedDosePpmH: number;
+  estimatedAverageExposure: number;
+  estimatedTwa?: number;
+  colorChangePercent: number;
+  temperature?: number;
+  humidity?: number;
+  location?: string;
+  weather?: string;
+  environmentalCorrection?: number;
+  detectedExpiryDate?: string;
+  expiryStatus?: ExpiryStatus;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  reviewedByUid?: string;
+  reviewedByName?: string;
+  reviewedAt?: Date;
   createdAt: Date;
 }
 
