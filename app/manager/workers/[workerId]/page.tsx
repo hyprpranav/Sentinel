@@ -96,6 +96,7 @@ export default function WorkerDetailsPage({ params }: { params: { workerId: stri
                   <tr className="border-b border-navy-border text-gray-400 text-sm">
                     <th className="py-2 font-medium">Date</th>
                     <th className="py-2 font-medium">Dose (ppm·h)</th>
+                    <th className="py-2 font-medium">Expiry</th>
                     <th className="py-2 font-medium">Status</th>
                   </tr>
                 </thead>
@@ -104,6 +105,7 @@ export default function WorkerDetailsPage({ params }: { params: { workerId: stri
                     <tr key={scan.id} className="border-b border-navy-border/50 last:border-0">
                       <td className="py-3 text-gray-300">{new Date(scan.createdAt).toLocaleDateString()}</td>
                       <td className="py-3 font-medium text-white">{scan.estimatedDosePpmH.toFixed(2)}</td>
+                      <td className="py-3 text-gray-300">{scan.stripExpiryDate || 'N/A'}</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded text-xs ${
                           scan.status === 'approved' ? 'bg-green-500/20 text-green-500' :

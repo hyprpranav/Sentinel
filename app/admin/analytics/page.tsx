@@ -34,6 +34,7 @@ export default function AdminAnalyticsPage() {
             workerId: r.workerId,
             workerName: r.workerName,
             workerPublicId: r.workerPublicId,
+            stripExpiryDate: r.stripExpiryDate,
             timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
             shift: r.shift,
             estimatedDosePpmH: r.estimatedDosePpmH,
@@ -154,6 +155,7 @@ export default function AdminAnalyticsPage() {
                     <th>Worker</th>
                     <th>Dose (ppm·h)</th>
                     <th>Shift</th>
+                    <th>Strip Expiry</th>
                     <th>Date</th>
                   </tr>
                 </thead>
@@ -168,6 +170,7 @@ export default function AdminAnalyticsPage() {
                         </div>
                       </td>
                       <td style={{ textTransform: 'capitalize' }}>{r.shift}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>{r.stripExpiryDate || 'N/A'}</td>
                       <td style={{ fontSize: '0.8125rem' }}>{formatDateTime(r.createdAt)}</td>
                     </tr>
                   ))}

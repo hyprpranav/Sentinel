@@ -23,6 +23,7 @@ export interface ExposureRecord {
   shift: Shift;
   cartridgeId?: string;
   imageUrl?: string;
+  stripExpiryDate?: string;
   estimatedDosePpmH: number;
   monitoringDuration: number; // hours
   estimatedAverageExposure: number; // ppm

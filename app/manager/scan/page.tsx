@@ -34,6 +34,7 @@ export default function ScanPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [duration, setDuration] = useState('8');
+  const [stripExpiryDate, setStripExpiryDate] = useState('');
   const [shift, setShift] = useState<'morning'|'afternoon'|'night'>(
     getShiftLabel(new Date()).toLowerCase() as 'morning'|'afternoon'|'night'
   );
@@ -60,6 +61,7 @@ export default function ScanPage() {
     stopCamera();
     setStep('qr');
     setQrInput('');
+    setStripExpiryDate('');
     setWorker(null);
     setCapturedImage(null);
     setCapturedBlob(null);
@@ -235,6 +237,7 @@ export default function ScanPage() {
         timestamp: new Date(),
         shift,
         imageUrl: uploadedUrl,
+        stripExpiryDate,
         estimatedDosePpmH: result.estimatedDosePpmH,
         monitoringDuration: parseFloat(duration) || 8,
         estimatedAverageExposure: result.estimatedAverageExposure,
@@ -518,6 +521,14 @@ export default function ScanPage() {
             </div>
           </div>
 
+          <div className="card" style={{ marginBottom: '1rem' }}>
+            <label htmlFor="strip-expiry" className="input-label">Strip expiry date</label>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
+              Read the small printed date from the strip and confirm it before saving.
+            </p>
+            <input id="strip-expiry" type="date" className="input" value={stripExpiryDate} onChange={(e) => setStripExpiryDate(e.target.value)} required />
+          </div>
+
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
               onClick={handleAnalyse} disabled={loading}>
@@ -552,6 +563,7 @@ export default function ScanPage() {
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
                 {worker.publicId} · {shift.charAt(0).toUpperCase() + shift.slice(1)} shift · {formatDuration(parseFloat(duration))}
               </p>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Strip expiry: {stripExpiryDate || 'Not confirmed'}</p>
             </div>
 
             <div style={{ textAlign: 'center', padding: '1.25rem 0' }}>
@@ -603,7 +615,7 @@ export default function ScanPage() {
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-primary btn-lg" style={{ flex: 1 }}
-              onClick={handleSave} disabled={loading}>
+              onClick={handleSave} disabled={loading || !stripExpiryDate}>
               {loading ? <><LoadingSpinner size={16} /> Saving...</> : <><Save size={16} /> Save Reading</>}
             </button>
             <button className="btn btn-ghost" onClick={() => setStep('analysis')}>

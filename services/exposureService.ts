@@ -29,6 +29,7 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
     shift: data.shift as ExposureRecord['shift'],
     cartridgeId: data.cartridgeId as string | undefined,
     imageUrl: data.imageUrl as string | undefined,
+    stripExpiryDate: data.stripExpiryDate as string | undefined,
     estimatedDosePpmH: data.estimatedDosePpmH as number,
     monitoringDuration: data.monitoringDuration as number,
     estimatedAverageExposure: data.estimatedAverageExposure as number,

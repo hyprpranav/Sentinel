@@ -78,6 +78,7 @@ export default function WorkerHome() {
             timestamp: toFirestoreDate(r.timestamp) ?? new Date(),
             shift: r.shift,
             estimatedDosePpmH: r.estimatedDosePpmH,
+            stripExpiryDate: r.stripExpiryDate,
             monitoringDuration: r.monitoringDuration,
             estimatedAverageExposure: r.estimatedAverageExposure,
             calibrationModelVersion: r.calibrationModelVersion,
@@ -199,6 +200,10 @@ export default function WorkerHome() {
                 <div>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Recorded</p>
                   <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{formatDateTime(latestRecord.createdAt)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Strip expiry</p>
+                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{latestRecord.stripExpiryDate || 'N/A'}</p>
                 </div>
               </div>
               <div className="alert alert-info" style={{ marginTop: '0.75rem' }}>
