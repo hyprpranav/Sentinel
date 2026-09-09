@@ -6,7 +6,7 @@ import { WorkerDosimeterScanCard } from '@/components/worker/WorkerDosimeterScan
 
 export default function WorkerScanPage() {
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 0.5rem' }}>
+    <div style={{ width: '100%' }}>
       <WorkerDosimeterScanCard showWeatherBanner={true} />
     </div>
   );

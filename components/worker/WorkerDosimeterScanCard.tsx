@@ -562,243 +562,307 @@ export function WorkerDosimeterScanCard({
         </div>
       )}
 
-      {/* ── STEP 1: SCANNING INTERFACE (IDENTICAL LAUNCHPAD CARD) ── */}
+      {/* ── STEP 1: SCANNING INTERFACE (FULL-WIDTH DISPLAY SPREAD) ── */}
       {step === 'scan' && (
-        <div style={{ maxWidth: 540, margin: '0 auto' }}>
+        <div style={{ width: '100%' }}>
           {/* Active Camera Viewport */}
           {isActive ? (
-            <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-              <div style={{
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: 'var(--radius-lg)',
-                background: '#000',
-                aspectRatio: '4 / 3',
-                marginBottom: '1rem'
-              }}>
-                <video
-                  ref={(el) => {
-                    (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
-                    if (el && stream && el.srcObject !== stream) {
-                      el.srcObject = stream;
-                      el.play().catch(() => {});
-                    }
-                  }}
-                  playsInline
-                  muted
-                  autoPlay
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-
-                {/* Reticle Overlay */}
+            <div className="card" style={{ width: '100%', padding: '1.5rem', marginBottom: '1.25rem' }}>
+              <div style={{ maxWidth: 680, margin: '0 auto' }}>
                 <div style={{
-                  position: 'absolute',
-                  inset: '12%',
-                  border: '2px solid #38bdf8',
-                  borderRadius: '12px',
-                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  padding: '0.75rem',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 'var(--radius-lg)',
+                  background: '#000',
+                  aspectRatio: '16 / 11',
+                  marginBottom: '1rem'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{
-                      fontSize: '0.6875rem',
-                      fontWeight: 700,
-                      color: '#38bdf8',
-                      background: 'rgba(0,0,0,0.6)',
-                      padding: '2px 6px',
-                      borderRadius: 4
-                    }}>
-                      AIM AT DOSIMETER WATCH
-                    </span>
-                    <span style={{
-                      fontSize: '0.6875rem',
-                      fontWeight: 700,
-                      color: '#4ade80',
-                      background: 'rgba(0,0,0,0.6)',
-                      padding: '2px 6px',
-                      borderRadius: 4
-                    }}>
-                      AUTO QR SCAN ACTIVE
-                    </span>
-                  </div>
+                  <video
+                    ref={(el) => {
+                      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+                      if (el && stream && el.srcObject !== stream) {
+                        el.srcObject = stream;
+                        el.play().catch(() => {});
+                      }
+                    }}
+                    playsInline
+                    muted
+                    autoPlay
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
 
-                  <div style={{ textAlign: 'center' }}>
-                    <span style={{
-                      fontSize: '0.6875rem',
-                      color: '#f8fafc',
-                      background: 'rgba(0,0,0,0.7)',
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      display: 'inline-block'
-                    }}>
-                      Align QR code and sensing strip inside frame
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={stopCamera}
-                  style={{
+                  {/* Reticle Overlay */}
+                  <div style={{
                     position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    background: 'rgba(0,0,0,0.7)',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    width: 32,
-                    height: 32,
-                    padding: 0,
+                    inset: '12%',
+                    border: '2px solid #38bdf8',
+                    borderRadius: '12px',
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                    pointerEvents: 'none',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Close Camera"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        color: '#38bdf8',
+                        background: 'rgba(0,0,0,0.6)',
+                        padding: '2px 6px',
+                        borderRadius: 4
+                      }}>
+                        AIM AT DOSIMETER WATCH
+                      </span>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        color: '#4ade80',
+                        background: 'rgba(0,0,0,0.6)',
+                        padding: '2px 6px',
+                        borderRadius: 4
+                      }}>
+                        AUTO QR SCAN ACTIVE
+                      </span>
+                    </div>
 
-              {loading && (
-                <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--color-accent)' }}>
-                  <LoadingSpinner size={20} />
-                  <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>{statusMessage}</span>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        color: '#f8fafc',
+                        background: 'rgba(0,0,0,0.7)',
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        display: 'inline-block'
+                      }}>
+                        Align QR code and sensing strip inside frame
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={stopCamera}
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      background: 'rgba(0,0,0,0.7)',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Close Camera"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-lg"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={handleManualCapture}
-                  disabled={loading}
-                >
-                  <Camera size={18} /> Capture Photo Now
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={stopCamera}
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
+                {loading && (
+                  <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--color-accent)' }}>
+                    <LoadingSpinner size={20} />
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>{statusMessage}</span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-lg"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={handleManualCapture}
+                    disabled={loading}
+                  >
+                    <Camera size={18} /> Capture Photo Now
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={stopCamera}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
-            /* Launchpad Card - EXACT MATCH TO USER ATTACHED SCREENSHOT */
-            <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem', marginBottom: '1.25rem' }}>
+            /* Launchpad Card - FULL DISPLAY SPREAD (DESKTOP 2-COLUMN, MOBILE 1-COLUMN) */
+            <div className="card" style={{
+              width: '100%',
+              padding: '2rem',
+              marginBottom: '1.25rem',
+            }}>
               <div style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: 'rgba(2, 132, 199, 0.12)',
-                color: 'var(--color-accent)',
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '2rem',
                 alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1.25rem'
               }}>
-                <ScanLine size={32} />
-              </div>
+                {/* Left Column: Visual Icon, Heading & Description */}
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'rgba(2, 132, 199, 0.12)',
+                    color: 'var(--color-accent)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '1rem',
+                  }}>
+                    <ScanLine size={28} />
+                  </div>
 
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Scan Worker Dosimeter Watch
-              </h2>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', maxWidth: 400, margin: '0 auto 1.5rem' }}>
-                Point camera or upload a photo of the worker&apos;s dosimeter. The system automatically reads the QR code, identifies the worker, and calculates chemical color darkening.
-              </p>
+                  <h2 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+                    Scan Worker Dosimeter Watch
+                  </h2>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                    Point camera or upload a photo of the worker&apos;s dosimeter. The system automatically reads the QR code, identifies the worker, and calculates chemical color darkening against the substrate.
+                  </p>
 
-              {loading && (
-                <div style={{ marginBottom: '1rem', color: 'var(--color-accent)' }}>
-                  <LoadingSpinner size={20} />
-                  <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>{statusMessage}</span>
+                  {/* Feature Highlights */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--color-text-secondary)',
+                      background: 'var(--color-surface-2)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                    }}>
+                      ⚡ Auto-Reads Worker QR
+                    </span>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--color-text-secondary)',
+                      background: 'var(--color-surface-2)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                    }}>
+                      🧪 Chemical Darkening %
+                    </span>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--color-text-secondary)',
+                      background: 'var(--color-surface-2)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                    }}>
+                      🌦 Live Ambient Weather
+                    </span>
+                  </div>
+
+                  {/* Demo Simulation Option */}
+                  <div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={handleDemoSimulation}
+                      disabled={loading}
+                      style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', color: 'var(--color-text-secondary)' }}
+                    >
+                      <Sparkles size={14} style={{ marginRight: '0.35rem', color: 'var(--color-accent)' }} />
+                      Try Prototype Demo Simulation
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              {/* Primary Actions: Camera & File Upload */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.75rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-lg"
-                  onClick={() => startCamera('environment')}
-                  disabled={loading}
-                  style={{ justifyContent: 'center' }}
-                >
-                  <Camera size={20} /> Open Camera & Scan Watch
-                </button>
+                {/* Right Column: Actions Container */}
+                <div style={{
+                  background: 'var(--color-surface-2)',
+                  padding: '1.5rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                }}>
+                  {loading && (
+                    <div style={{ textAlign: 'center', color: 'var(--color-accent)' }}>
+                      <LoadingSpinner size={20} />
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>{statusMessage}</span>
+                    </div>
+                  )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
+                  {/* Primary Buttons */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-lg"
+                      onClick={() => startCamera('environment')}
+                      disabled={loading}
+                      style={{ justifyContent: 'center', width: '100%' }}
+                    >
+                      <Camera size={20} /> Open Camera & Scan Watch
+                    </button>
 
-                <button
-                  type="button"
-                  className="btn btn-outline btn-lg"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
-                  style={{ justifyContent: 'center' }}
-                >
-                  <Upload size={18} /> Upload / Take Photo of Watch
-                </button>
-              </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileUpload}
+                      style={{ display: 'none' }}
+                    />
 
-              {/* Alternative: Enter Worker ID Manually */}
-              <div style={{
-                paddingTop: '1.25rem',
-                borderTop: '1px solid var(--color-border)',
-                textAlign: 'left'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <QrCode size={16} style={{ color: 'var(--color-text-muted)' }} />
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                    Or enter Worker SENTINEL ID manually:
-                  </span>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-lg"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                      style={{ justifyContent: 'center', width: '100%' }}
+                    >
+                      <Upload size={18} /> Upload / Take Photo of Watch
+                    </button>
+                  </div>
+
+                  {/* Alternative: Enter Worker ID Manually */}
+                  <div style={{
+                    paddingTop: '1rem',
+                    borderTop: '1px solid var(--color-border)',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <QrCode size={15} style={{ color: 'var(--color-text-muted)' }} />
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                        Or enter Worker SENTINEL ID manually:
+                      </span>
+                    </div>
+
+                    <form onSubmit={handleManualWorkerResolve} style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="e.g. SW0001"
+                        value={manualIdInput}
+                        onChange={(e) => setManualIdInput(e.target.value)}
+                        disabled={loading}
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-outline"
+                        disabled={loading || !manualIdInput.trim()}
+                      >
+                        Select Worker
+                      </button>
+                    </form>
+                  </div>
                 </div>
-
-                <form onSubmit={handleManualWorkerResolve} style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g. SW0001"
-                    value={manualIdInput}
-                    onChange={(e) => setManualIdInput(e.target.value)}
-                    disabled={loading}
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    type="submit"
-                    className="btn btn-outline"
-                    disabled={loading || !manualIdInput.trim()}
-                  >
-                    Select Worker
-                  </button>
-                </form>
-              </div>
-
-              {/* Demo Simulation Option */}
-              <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={handleDemoSimulation}
-                  disabled={loading}
-                  style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}
-                >
-                  <Sparkles size={14} style={{ marginRight: '0.35rem', color: 'var(--color-accent)' }} />
-                  Try Prototype Demo Simulation
-                </button>
               </div>
             </div>
           )}
@@ -1130,8 +1194,8 @@ export function WorkerDosimeterScanCard({
 
       {/* ── STEP 3: SUBMISSION SUCCESS / CONFIRMATION ── */}
       {step === 'saved' && submissionFeedback && (
-        <div style={{ maxWidth: 540, margin: '1rem auto', textAlign: 'center' }}>
-          <div className="card" style={{ padding: '2.5rem 1.5rem' }}>
+        <div style={{ width: '100%', marginBottom: '1.25rem', textAlign: 'center' }}>
+          <div className="card" style={{ padding: '2.5rem 1.5rem', width: '100%' }}>
             <div style={{
               width: 64,
               height: 64,
