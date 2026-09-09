@@ -8,7 +8,6 @@ import { WorkerBottomNav } from '@/components/layout/WorkerBottomNav';
 import { SentinelLogo } from '@/components/layout/SentinelLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
-import { QuickCameraButton } from '@/components/ui/QuickCameraButton';
 import { WorkerSidebar } from '@/components/layout/WorkerSidebar';
 import { Menu } from 'lucide-react';
 
@@ -67,15 +66,11 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
         <button className="btn btn-ghost btn-icon worker-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open worker navigation"><Menu size={20} aria-hidden="true" /></button>
         <SentinelLogo size="sm" />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <QuickCameraButton userId={user.uid} role="worker" displayName={activeName} />
           <ThemeToggle />
         </div>
       </header>
 
       <main className="worker-main">
-        <div style={{ marginBottom: '1rem' }}>
-          <QuickCameraButton userId={user.uid} role="worker" displayName={activeName} variant="card" />
-        </div>
         {children}
       </main>
 

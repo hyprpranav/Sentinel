@@ -72,7 +72,7 @@ export default function ScanPage() {
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Camera & Video Refs
-  const { videoRef, isActive, error: cameraError, startCamera, stopCamera } = useCamera();
+  const { videoRef, isActive, stream, error: cameraError, startCamera, stopCamera } = useCamera();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isScanningFrameRef = useRef(false);
   const scanIntervalRef = useRef<number | null>(null);
@@ -541,6 +541,13 @@ export default function ScanPage() {
         </div>
       )}
 
+      {cameraError && (
+        <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+          <span>{cameraError}</span>
+        </div>
+      )}
+
       {/* ── STEP 1: SCANNING INTERFACE (CAMERA + UPLOAD + AUTO QR) ── */}
       {step === 'scan' && (
         <div style={{ maxWidth: 540, margin: '0 auto' }}>
@@ -556,7 +563,13 @@ export default function ScanPage() {
                 marginBottom: '1rem'
               }}>
                 <video
-                  ref={videoRef}
+                  ref={(el) => {
+                    (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+                    if (el && stream && el.srcObject !== stream) {
+                      el.srcObject = stream;
+                      el.play().catch(() => {});
+                    }
+                  }}
                   playsInline
                   muted
                   autoPlay
