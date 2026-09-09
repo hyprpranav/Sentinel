@@ -36,6 +36,7 @@ service cloud.firestore {
 
       // Only admin can update others; admin email can always update own doc (bootstrap)
       allow update: if isAdmin()
+        || (isManagerOrAdmin() && resource.data.role == 'worker' && request.resource.data.role == 'worker')
         || (isAuthenticated() && request.auth.uid == userId && request.auth.token.email == 'hyprpranav@gmail.com');
 
       allow delete: if isAdmin();
@@ -44,7 +45,7 @@ service cloud.firestore {
     // WORKERS COLLECTION
     match /workers/{workerId} {
       allow read: if isAuthenticated() || resource.data.status == 'active';
-      allow create: if isAdmin();
+      allow create: if isManagerOrAdmin();
       allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow delete: if isAdmin();
     }
@@ -57,7 +58,7 @@ service cloud.firestore {
     }
 
     match /adminSettings/{settingId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isManagerOrAdmin();
     }
 
     // EXPOSURE RECORDS
@@ -76,7 +77,7 @@ service cloud.firestore {
     match /workerRequests/{requestId} {
       allow create: if true;
       allow read: if isManagerOrAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
-      allow update, delete: if isAdmin();
+      allow update, delete: if isManagerOrAdmin();
     }
 
     match /managerRequests/{requestId} {

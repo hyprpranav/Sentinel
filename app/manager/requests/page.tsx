@@ -1,21 +1,50 @@
 'use client';
 // app/(manager)/requests/page.tsx
 import { useEffect, useState } from 'react';
-import { getPendingRequests } from '@/services/workerService';
+import { getPendingRequests, approveWorkerRequest, rejectWorkerRequest } from '@/services/workerService';
 import { WorkerRequest } from '@/types/worker';
 import { formatDateTime } from '@/lib/utils/date';
 import { RequestStatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
-import { ClipboardList, Info } from 'lucide-react';
+import { ClipboardList, Info, Check, X, AlertCircle } from 'lucide-react';
+import { useAuthContext } from '@/context/AuthContext';
+import { writeAuditLog } from '@/services/auditLogService';
 
 export default function ManagerRequestsPage() {
+  const { user, displayName } = useAuthContext();
   const [requests, setRequests] = useState<WorkerRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [error, setError] = useState('');
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try { setRequests(await getPendingRequests()); }
+    catch { setError('Unable to load worker requests.'); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => {
-    getPendingRequests().then(setRequests).finally(() => setLoading(false));
+    loadRequests();
   }, []);
+
+  const decide = async (request: WorkerRequest, approve: boolean) => {
+    if (!user) return;
+    if (!approve && rejectId !== request.id) { setRejectId(request.id); return; }
+    if (!approve && !rejectReason.trim()) return;
+    setProcessing(request.id);
+    setError('');
+    try {
+      if (approve) await approveWorkerRequest(request.id, user.uid, user.uid);
+      else await rejectWorkerRequest(request.id, user.uid, rejectReason.trim());
+      await writeAuditLog({ actorId: user.uid, actorName: displayName ?? 'Manager', role: 'manager', action: approve ? 'worker_approved' : 'worker_rejected', targetId: request.id, targetName: request.fullName, details: approve ? undefined : { reason: rejectReason.trim() } });
+      setRejectId(null); setRejectReason(''); await loadRequests();
+    } catch { setError('Request update failed.'); }
+    finally { setProcessing(null); }
+  };
 
   return (
     <div>
@@ -27,13 +56,14 @@ export default function ManagerRequestsPage() {
       <div className="alert alert-info" style={{ marginBottom: '1.5rem' }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
-          <strong style={{ display: 'block', marginBottom: '0.25rem' }}>View-only Access</strong>
+            <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Manager Review Access</strong>
           <span style={{ fontSize: '0.8125rem' }}>
-            Managers can view pending requests for their facility, but only the Master Admin can approve or reject them.
-            Approved workers will appear in your Assigned Workers list.
+            Managers can approve or reject worker requests. Every decision is also recorded in the Master Admin dashboard.
           </span>
         </div>
       </div>
+
+      {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}><AlertCircle size={15} /><span>{error}</span></div>}
 
       <div className="card card-flush">
         {loading ? (
@@ -78,8 +108,19 @@ export default function ManagerRequestsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <RequestStatusBadge status={req.status} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                  {rejectId === req.id ? (
+                    <>
+                      <input className="input" placeholder="Rejection reason" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+                      <button className="btn btn-danger btn-sm" onClick={() => decide(req, false)} disabled={!rejectReason.trim() || !!processing}><Check size={14} /> Confirm</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setRejectId(null); setRejectReason(''); }}><X size={14} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-success btn-sm" onClick={() => decide(req, true)} disabled={!!processing}><Check size={14} /> Approve</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => decide(req, false)} disabled={!!processing}><X size={14} /> Reject</button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

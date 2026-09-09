@@ -170,13 +170,16 @@ export async function approveWorkerRequest(
   if (!reqSnap.exists()) throw new Error('Request not found');
   const reqData = reqSnap.data();
   let assignedManagerId = managerId;
-  const managerSnap = await getDocs(query(
-    collection(db, COLLECTIONS.USERS),
-    where('role', '==', 'manager'),
-    where('isActive', '==', true),
-    limit(1)
-  ));
-  if (!managerSnap.empty) assignedManagerId = managerSnap.docs[0].id;
+  const reviewerSnap = await getDoc(doc(db, COLLECTIONS.USERS, reviewerId));
+  if (reviewerSnap.data()?.role !== 'manager') {
+    const managerSnap = await getDocs(query(
+      collection(db, COLLECTIONS.USERS),
+      where('role', '==', 'manager'),
+      where('isActive', '==', true),
+      limit(1)
+    ));
+    if (!managerSnap.empty) assignedManagerId = managerSnap.docs[0].id;
+  }
 
   const workerRef = doc(collection(db, COLLECTIONS.WORKERS));
   const counterRef = doc(db, COLLECTIONS.ADMIN_SETTINGS, 'sequences');
