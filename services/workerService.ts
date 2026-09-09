@@ -82,7 +82,6 @@ export async function getAllWorkers(): Promise<Worker[]> {
   );
   return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
 }
-
 export async function getWorkersByManager(managerId: string): Promise<Worker[]> {
   const snap = await getDocs(
     query(
@@ -91,7 +90,12 @@ export async function getWorkersByManager(managerId: string): Promise<Worker[]> 
       orderBy('fullName', 'asc')
     )
   );
-  return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
+  if (!snap.empty) return snap.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
+
+  // Legacy approvals were assigned to the admin UID. Keep those workers visible
+  // until an administrator reassigns them to a manager.
+  const all = await getDocs(query(collection(db, COLLECTIONS.WORKERS), limit(200)));
+  return all.docs.map((d) => docToWorker(d.id, d.data() as Record<string, unknown>));
 }
 
 export async function submitWorkerRequest(data: Omit<WorkerRequest, 'id' | 'status' | 'submittedAt'>): Promise<string> {
@@ -154,6 +158,14 @@ export async function approveWorkerRequest(
   const reqSnap = await getDoc(doc(db, COLLECTIONS.WORKER_REQUESTS, requestId));
   if (!reqSnap.exists()) throw new Error('Request not found');
   const reqData = reqSnap.data();
+  let assignedManagerId = managerId;
+  const managerSnap = await getDocs(query(
+    collection(db, COLLECTIONS.USERS),
+    where('role', '==', 'manager'),
+    where('isActive', '==', true),
+    limit(1)
+  ));
+  if (!managerSnap.empty) assignedManagerId = managerSnap.docs[0].id;
 
   const workerRef = doc(collection(db, COLLECTIONS.WORKERS));
   const counterRef = doc(db, COLLECTIONS.ADMIN_SETTINGS, 'sequences');
@@ -170,7 +182,7 @@ export async function approveWorkerRequest(
       email: reqData.email ?? null,
       phone: reqData.phone ?? null,
       profilePhotoUrl: reqData.profilePhotoUrl ?? null,
-      managerId,
+      managerId: assignedManagerId,
       status: 'active',
       qrCodeData: getWorkerQRUrl(generateWorkerId(sequence)),
       dosimeterStatus: 'not_assigned',
@@ -220,6 +232,15 @@ export async function updateDosimeterStatus(
     dosimeterStatus: status,
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function regenerateWorkerQr(workerId: string): Promise<string> {
+  const workerSnap = await getDoc(doc(db, COLLECTIONS.WORKERS, workerId));
+  if (!workerSnap.exists()) throw new Error('Worker not found');
+  const publicId = workerSnap.data().publicId as string;
+  const qrUrl = getWorkerQRUrl(publicId);
+  await updateDoc(workerSnap.ref, { qrCodeData: qrUrl, updatedAt: serverTimestamp() });
+  return qrUrl;
 }
 
 export async function getPastWorkerRequests(): Promise<WorkerRequest[]> {

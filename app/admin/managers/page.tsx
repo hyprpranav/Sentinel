@@ -10,6 +10,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { PinDeleteDialog } from '@/components/ui/PinDeleteDialog';
 import { deleteAllManagers } from '@/services/managerService';
 import { UserCheck, Shield, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { generateQRDataUrl } from '@/lib/qr/generator';
 
 export default function AdminManagersPage() {
   const [managers, setManagers] = useState<AppUser[]>([]);
@@ -62,6 +64,16 @@ export default function AdminManagersPage() {
     await deleteAllManagers();
     // Refresh to keep only admin
     refresh();
+  };
+
+  const handleDownloadManagerQr = async (manager: AppUser) => {
+    const publicId = (manager as AppUser & { publicId?: string }).publicId;
+    if (!publicId) return;
+    const dataUrl = await generateQRDataUrl(publicId, 320);
+    const link = document.createElement('a');
+    link.download = `SENTINEL-${publicId}-QR.png`;
+    link.href = dataUrl;
+    link.click();
   };
 
   return (
@@ -128,6 +140,11 @@ export default function AdminManagersPage() {
                       </span>
                     </td>
                     <td>
+                      {m.role !== 'admin' && (m as AppUser & { publicId?: string }).publicId && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadManagerQr(m)} title="Regenerate manager QR">
+                          <Download size={15} /> Regenerate QR
+                        </button>
+                      )}
                       {m.role !== 'admin' && (
                         <button
                           className="btn btn-ghost btn-sm"

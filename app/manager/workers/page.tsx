@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { timeAgo } from '@/lib/utils/date';
 import { Users, Search } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ManagerWorkersPage() {
   const { user, role } = useAuthContext();
@@ -70,6 +71,7 @@ export default function ManagerWorkersPage() {
                   <th>Status</th>
                   <th>Dosimeter</th>
                   <th>Last Scan</th>
+                  <th>Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,6 +113,7 @@ export default function ManagerWorkersPage() {
                     <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                       {w.lastScanAt ? timeAgo(w.lastScanAt) : 'Never'}
                     </td>
+                    <td><Link href={`/manager/workers/${w.id}`} className="btn btn-ghost btn-sm">View details</Link></td>
                   </tr>
                 ))}
               </tbody>

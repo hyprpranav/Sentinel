@@ -1,7 +1,7 @@
 'use client';
 // app/(admin)/workers/page.tsx
 import { useEffect, useState, useMemo } from 'react';
-import { getAllWorkers, deleteWorker, deleteAllWorkers } from '@/services/workerService';
+import { getAllWorkers, deleteWorker, deleteAllWorkers, regenerateWorkerQr } from '@/services/workerService';
 import { Worker } from '@/types/worker';
 import { formatDate } from '@/lib/utils/date';
 import { DosimeterBadge, WorkerStatusBadge } from '@/components/ui/Badge';
@@ -61,7 +61,8 @@ export default function AdminWorkersPage() {
   };
 
   const handleDownloadQR = async (worker: Worker) => {
-    const dataUrl = await generateQRDataUrl(getWorkerQRUrl(worker.publicId), 320);
+    const qrUrl = await regenerateWorkerQr(worker.id);
+    const dataUrl = await generateQRDataUrl(qrUrl, 320);
     const link = document.createElement('a');
     link.download = `SENTINEL-${worker.publicId}-QR.png`;
     link.href = dataUrl;
@@ -165,7 +166,7 @@ export default function AdminWorkersPage() {
                     </td>
                     <td>
                       <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadQR(w)} title={`Download QR for ${w.fullName}`}>
-                        <Download size={15} /> QR
+                        <Download size={15} /> Regenerate QR
                       </button>
                       <button
                         className="btn btn-ghost btn-sm"
