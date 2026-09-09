@@ -17,7 +17,7 @@ function WorkerShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isPublicWorkerProfile = /^\/worker\/[^/]+$/.test(pathname);
+  const isPublicWorkerProfile = /^\/worker\/SW\d+$/i.test(pathname);
 
   useEffect(() => {
     if (isPublicWorkerProfile) return;
