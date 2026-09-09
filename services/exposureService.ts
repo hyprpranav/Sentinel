@@ -56,6 +56,9 @@ function docToRecord(id: string, data: Record<string, unknown>): ExposureRecord 
     capturedByUid: data.capturedByUid as string | undefined,
     capturedByRole: data.capturedByRole as ExposureRecord['capturedByRole'],
     capturedByName: data.capturedByName as string | undefined,
+    submittedAt: data.submittedAt ? toFirestoreDate(data.submittedAt as Timestamp) ?? undefined : undefined,
+    approvedAt: data.approvedAt ? toFirestoreDate(data.approvedAt as Timestamp) ?? undefined : undefined,
+    peerScannerName: data.peerScannerName as string | undefined,
     qrId: data.qrId as string | undefined,
     scanDate: data.scanDate as string | undefined,
     scanTime: data.scanTime as string | undefined,
@@ -405,12 +408,16 @@ export async function getPendingScanApprovals(): Promise<ScanApprovalRequest[]> 
 export async function approveScanRequest(
   requestId: string,
   reviewerUid: string,
-  reviewerName: string
+  reviewerName: string,
+  remarks?: string
 ): Promise<string> {
   const reqRef = doc(db, 'scanApprovals', requestId);
   const reqSnap = await getDoc(reqRef);
   if (!reqSnap.exists()) throw new Error('Scan approval request not found');
   const reqData = reqSnap.data();
+
+  const scanTimestamp = toFirestoreDate(reqData.scanTimestamp as Timestamp) ?? new Date();
+  const now = new Date();
 
   // Create permanent finalized exposure record for target worker
   const recordId = await saveExposureRecord({
@@ -419,7 +426,10 @@ export async function approveScanRequest(
     workerPublicId: reqData.targetWorkerPublicId,
     managerId: reviewerUid,
     managerName: reviewerName,
-    timestamp: toFirestoreDate(reqData.scanTimestamp as Timestamp) ?? new Date(),
+    timestamp: scanTimestamp,
+    submittedAt: scanTimestamp,
+    approvedAt: now,
+    peerScannerName: reqData.scannerName,
     shift: reqData.shift || 'morning',
     imageUrl: reqData.imageUrl,
     stripExpiryDate: reqData.detectedExpiryDate,
@@ -443,6 +453,7 @@ export async function approveScanRequest(
     capturedByRole: 'worker',
     capturedByName: reqData.scannerName,
     notes: `Worker-to-worker scan by ${reqData.scannerName}. Approved by ${reviewerName}.`,
+    reviewerRemarks: remarks || undefined,
     confirmationStatus: 'approved',
   });
 
@@ -452,6 +463,7 @@ export async function approveScanRequest(
     reviewedByUid: reviewerUid,
     reviewedByName: reviewerName,
     reviewedAt: serverTimestamp(),
+    remarks: remarks || '',
     exposureRecordId: recordId,
   });
 
@@ -468,8 +480,104 @@ export async function rejectScanRequest(
   await updateDoc(reqRef, {
     status: 'rejected',
     rejectionReason: reason,
+    remarks: reason,
     reviewedByUid: reviewerUid,
     reviewedByName: reviewerName,
     reviewedAt: serverTimestamp(),
   });
+}
+
+export async function getReviewedScanApprovals(limitCount = 50): Promise<ScanApprovalRequest[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'scanApprovals'),
+        orderBy('reviewedAt', 'desc'),
+        limit(limitCount)
+      )
+    );
+    return snap.docs
+      .map((d) => {
+        const r = d.data();
+        return {
+          id: d.id,
+          scannerUid: r.scannerUid,
+          scannerWorkerId: r.scannerWorkerId,
+          scannerName: r.scannerName,
+          scannerRole: r.scannerRole || 'worker',
+          targetWorkerId: r.targetWorkerId,
+          targetWorkerName: r.targetWorkerName,
+          targetWorkerPublicId: r.targetWorkerPublicId,
+          targetWorkerUid: r.targetWorkerUid,
+          imageUrl: r.imageUrl,
+          scanTimestamp: toFirestoreDate(r.scanTimestamp as Timestamp) ?? new Date(),
+          shift: r.shift || 'morning',
+          monitoringDuration: Number(r.monitoringDuration) || 8,
+          estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+          estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+          estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+          colorChangePercent: Number(r.colorChangePercent) || 0,
+          temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+          humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+          location: r.location,
+          weather: r.weather,
+          environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+          detectedExpiryDate: r.detectedExpiryDate,
+          expiryStatus: r.expiryStatus,
+          status: r.status || 'pending',
+          rejectionReason: r.rejectionReason,
+          remarks: r.remarks,
+          reviewedByUid: r.reviewedByUid,
+          reviewedByName: r.reviewedByName,
+          reviewedAt: r.reviewedAt ? toFirestoreDate(r.reviewedAt as Timestamp) ?? undefined : undefined,
+          createdAt: toFirestoreDate(r.createdAt as Timestamp) ?? new Date(),
+          exposureRecordId: r.exposureRecordId,
+        } as ScanApprovalRequest;
+      })
+      .filter((item) => item.status === 'approved' || item.status === 'rejected');
+  } catch {
+    const snap = await getDocs(
+      query(collection(db, 'scanApprovals'), limit(limitCount * 2))
+    );
+    return snap.docs
+      .map((d) => {
+        const r = d.data();
+        return {
+          id: d.id,
+          scannerUid: r.scannerUid,
+          scannerWorkerId: r.scannerWorkerId,
+          scannerName: r.scannerName,
+          scannerRole: r.scannerRole || 'worker',
+          targetWorkerId: r.targetWorkerId,
+          targetWorkerName: r.targetWorkerName,
+          targetWorkerPublicId: r.targetWorkerPublicId,
+          targetWorkerUid: r.targetWorkerUid,
+          imageUrl: r.imageUrl,
+          scanTimestamp: toFirestoreDate(r.scanTimestamp as Timestamp) ?? new Date(),
+          shift: r.shift || 'morning',
+          monitoringDuration: Number(r.monitoringDuration) || 8,
+          estimatedDosePpmH: Number(r.estimatedDosePpmH) || 0,
+          estimatedAverageExposure: Number(r.estimatedAverageExposure) || 0,
+          estimatedTwa: r.estimatedTwa !== undefined ? Number(r.estimatedTwa) : undefined,
+          colorChangePercent: Number(r.colorChangePercent) || 0,
+          temperature: r.temperature !== undefined ? Number(r.temperature) : undefined,
+          humidity: r.humidity !== undefined ? Number(r.humidity) : undefined,
+          location: r.location,
+          weather: r.weather,
+          environmentalCorrection: r.environmentalCorrection !== undefined ? Number(r.environmentalCorrection) : undefined,
+          detectedExpiryDate: r.detectedExpiryDate,
+          expiryStatus: r.expiryStatus,
+          status: r.status || 'pending',
+          rejectionReason: r.rejectionReason,
+          remarks: r.remarks,
+          reviewedByUid: r.reviewedByUid,
+          reviewedByName: r.reviewedByName,
+          reviewedAt: r.reviewedAt ? toFirestoreDate(r.reviewedAt as Timestamp) ?? undefined : undefined,
+          createdAt: toFirestoreDate(r.createdAt as Timestamp) ?? new Date(),
+          exposureRecordId: r.exposureRecordId,
+        } as ScanApprovalRequest;
+      })
+      .filter((item) => item.status === 'approved' || item.status === 'rejected')
+      .sort((a, b) => (b.reviewedAt?.getTime() ?? 0) - (a.reviewedAt?.getTime() ?? 0));
+  }
 }

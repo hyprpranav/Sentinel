@@ -52,6 +52,9 @@ export interface ExposureRecord {
   capturedByUid?: string;
   capturedByRole?: 'worker' | 'manager' | 'admin';
   capturedByName?: string;
+  submittedAt?: Date;
+  approvedAt?: Date;
+  peerScannerName?: string;
   qrId?: string;
   scanDate?: string;
   scanTime?: string;
@@ -85,10 +88,12 @@ export interface ScanApprovalRequest {
   expiryStatus?: ExpiryStatus;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
+  remarks?: string;
   reviewedByUid?: string;
   reviewedByName?: string;
   reviewedAt?: Date;
   createdAt: Date;
+  exposureRecordId?: string;
 }
 
 export interface ExposureSummary {

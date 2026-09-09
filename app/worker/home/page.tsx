@@ -107,6 +107,9 @@ export default function WorkerHome() {
                 calibrationModelVersion: r.calibrationModelVersion,
                 dosimeterStatus: r.dosimeterStatus,
                 isPublicVisible: r.isPublicVisible,
+                submittedAt: r.submittedAt ? toFirestoreDate(r.submittedAt) ?? undefined : undefined,
+                approvedAt: r.approvedAt ? toFirestoreDate(r.approvedAt) ?? undefined : undefined,
+                peerScannerName: r.peerScannerName,
                 createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
                 status: r.status,
                 reviewerRemarks: r.reviewerRemarks,
@@ -277,7 +280,14 @@ export default function WorkerHome() {
               }}>
                 <ShieldCheck size={20} style={{ color: '#0284c7', flexShrink: 0 }} />
                 <div style={{ fontSize: '0.875rem', lineHeight: 1.45, color: 'var(--color-text-primary)' }}>
-                  {(latestRecord.capturedByRole === 'manager' || latestRecord.capturedByRole === 'admin') ? (
+                  {(latestRecord.peerScannerName || (latestRecord.capturedByRole === 'worker' && latestRecord.managerName && latestRecord.capturedByName !== latestRecord.workerName)) ? (
+                    <>
+                      Scanned by peer <strong>{latestRecord.peerScannerName || latestRecord.capturedByName || 'Peer Worker'}</strong>
+                      {latestRecord.submittedAt && <> on <strong>{formatDateTime(latestRecord.submittedAt)}</strong></>}
+                      {' '}· Approved by Manager <strong>{latestRecord.managerName || 'Manager'}</strong>
+                      {latestRecord.approvedAt && <> on <strong>{formatDateTime(latestRecord.approvedAt)}</strong></>}
+                    </>
+                  ) : (latestRecord.capturedByRole === 'manager' || latestRecord.capturedByRole === 'admin') ? (
                     <>
                       <strong>Manager {latestRecord.capturedByName || latestRecord.managerName || 'Manager'}</strong> scanned your dosimeter watch and updated your exposure on <strong>{formatDateTime(latestRecord.createdAt || latestRecord.timestamp)}</strong>
                     </>

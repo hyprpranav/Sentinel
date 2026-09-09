@@ -84,6 +84,9 @@ export default function MyExposurePage() {
                 calibrationModelVersion: r.calibrationModelVersion,
                 dosimeterStatus: r.dosimeterStatus,
                 isPublicVisible: r.isPublicVisible,
+                submittedAt: r.submittedAt ? toFirestoreDate(r.submittedAt) ?? undefined : undefined,
+                approvedAt: r.approvedAt ? toFirestoreDate(r.approvedAt) ?? undefined : undefined,
+                peerScannerName: r.peerScannerName,
                 createdAt: toFirestoreDate(r.createdAt) ?? new Date(),
               } as ExposureRecord;
             });
@@ -259,27 +262,42 @@ export default function MyExposurePage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {records.map((r) => (
-            <div key={r.id} className="card" style={{ padding: '1.25rem' }}>
-              {/* Scan Attribution Banner */}
+            <div
+              key={r.id}
+              className="card"
+              style={{
+                padding: '1.25rem',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+              }}
+            >
+              {/* Scan Attribution Tag with Peer Scanner & Manager Timestamps */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '6px',
-                background: (r.capturedByRole === 'manager' || r.capturedByRole === 'admin')
+                padding: '0.4rem 0.75rem',
+                borderRadius: 'var(--radius-sm)',
+                background: (r.peerScannerName || (r.capturedByRole === 'worker' && r.managerName && r.capturedByName !== r.workerName))
+                  ? 'rgba(2, 132, 199, 0.1)'
+                  : (r.capturedByRole === 'manager' || r.capturedByRole === 'admin')
                   ? 'rgba(2, 132, 199, 0.1)'
                   : 'var(--color-surface-2)',
-                border: (r.capturedByRole === 'manager' || r.capturedByRole === 'admin')
-                  ? '1px solid rgba(2, 132, 199, 0.25)'
-                  : '1px solid var(--color-border)',
+                border: '1px solid var(--color-border)',
                 marginBottom: '0.75rem',
                 fontSize: '0.75rem',
                 color: 'var(--color-text-primary)',
               }}>
                 <ShieldCheck size={15} style={{ color: '#0284c7', flexShrink: 0 }} />
                 <span>
-                  {(r.capturedByRole === 'manager' || r.capturedByRole === 'admin') ? (
+                  {(r.peerScannerName || (r.capturedByRole === 'worker' && r.managerName && r.capturedByName !== r.workerName)) ? (
+                    <>
+                      Scanned by peer <strong>{r.peerScannerName || r.capturedByName || 'Peer Worker'}</strong>
+                      {r.submittedAt && <> on {formatDateTime(r.submittedAt)}</>}
+                      {' '}· Approved by Manager <strong>{r.managerName || 'Manager'}</strong>
+                      {r.approvedAt && <> on {formatDateTime(r.approvedAt)}</>}
+                    </>
+                  ) : (r.capturedByRole === 'manager' || r.capturedByRole === 'admin') ? (
                     <>Scanned and updated by Manager <strong>{r.capturedByName || r.managerName || 'Manager'}</strong> on {formatDateTime(r.createdAt || r.timestamp)}</>
                   ) : (
                     <>Self-scanned dosimeter record on {formatDateTime(r.createdAt || r.timestamp)}</>
