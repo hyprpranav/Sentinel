@@ -22,6 +22,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
 import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
+import { WorkerDosimeterScanCard } from '@/components/worker/WorkerDosimeterScanCard';
 import { Activity, Info, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function WorkerHome() {
@@ -246,6 +247,12 @@ export default function WorkerHome() {
             </div>
             <DosimeterBadge status={workerProfile.dosimeterStatus} />
           </div>
+
+          {/* Quick Scan Worker Dosimeter Watch Card */}
+          <WorkerDosimeterScanCard
+            initialWorker={workerProfile}
+            showWeatherBanner={false}
+          />
 
           <ActivityHeatmap records={recentScans} days={30} />
 
