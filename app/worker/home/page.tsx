@@ -23,6 +23,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
 import { WeatherAnalyticsCard } from '@/components/weather/WeatherAnalyticsCard';
 import { WorkerDosimeterScanCard } from '@/components/worker/WorkerDosimeterScanCard';
+import { DosimeterExposureSummaryCard } from '@/components/exposure/DosimeterExposureSummaryCard';
 import { Activity, Info, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function WorkerHome() {
@@ -306,45 +307,12 @@ export default function WorkerHome() {
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
-                    {formatDose(latestRecord.estimatedDosePpmH)}
-                  </span>
-                  <span className="dose-unit">ppm·h</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <DoseLevelBadge ppmH={latestRecord.estimatedDosePpmH} />
-                  <DosimeterBadge status={latestRecord.dosimeterStatus} />
-                </div>
-              </div>
-
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem', background: 'var(--color-surface-2)',
-                borderRadius: 'var(--radius-md)', padding: '1rem',
-              }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chemical Darkening</p>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text-primary)' }}>
-                    {latestRecord.colorChangePercent !== undefined ? `${latestRecord.colorChangePercent}% darkened` : 'Normal (0%)'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Monitoring Duration</p>
-                  <p style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{formatDuration(latestRecord.monitoringDuration)}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Recorded On</p>
-                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>{formatDateTime(latestRecord.createdAt || latestRecord.timestamp)}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ambient Weather</p>
-                  <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                    {latestRecord.temperature !== undefined ? `${latestRecord.temperature}°C · ${latestRecord.humidity}% RH` : 'Recorded at normal ambient'}
-                  </p>
-                </div>
-              </div>
+              {/* Hero 4-Metric Exposure Card matching reference APPT specifications */}
+              <DosimeterExposureSummaryCard
+                record={latestRecord}
+                title="Latest Dosimeter Exposure Status"
+                isLive={true}
+              />
 
               <div className="alert alert-info" style={{ marginTop: '0.75rem' }}>
                 <Info size={14} style={{ flexShrink: 0 }} />

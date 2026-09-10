@@ -19,14 +19,16 @@ import { formatDateTime, toFirestoreDate } from '@/lib/utils/date';
 import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Activity, ShieldCheck } from 'lucide-react';
+import { Activity, ShieldCheck, Smartphone, ListFilter } from 'lucide-react';
 import { getWorkerExposureSummary } from '@/services/exposureService';
+import { DosimeterExposureSummaryCard } from '@/components/exposure/DosimeterExposureSummaryCard';
 
 export default function MyExposurePage() {
   const { user } = useAuthContext();
   const [records, setRecords] = useState<ExposureRecord[]>([]);
   const [summary, setSummary] = useState<{ totalScans: number; totalDays: number; avgDose: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'snapshot' | 'history'>('snapshot');
 
   useEffect(() => {
     if (!user) return;
@@ -168,13 +170,84 @@ export default function MyExposurePage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '1.5rem' }}>Exposure History & Analysis</h1>
         <p>Personal H₂S exposure records, cumulative dosage, and health impact metrics</p>
       </div>
 
+      {/* Screen Mode Selector — Perfect for single-screen mobile screenshots */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '1rem',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+      }}>
+        <div style={{
+          display: 'inline-flex',
+          background: 'var(--color-surface-2)',
+          padding: '3px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--color-border)',
+        }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setViewMode('snapshot')}
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              background: viewMode === 'snapshot' ? 'var(--color-surface)' : 'transparent',
+              color: viewMode === 'snapshot' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              boxShadow: viewMode === 'snapshot' ? 'var(--shadow-sm)' : 'none',
+              border: viewMode === 'snapshot' ? '1px solid var(--color-border)' : '1px solid transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Smartphone size={14} /> Dashboard Snapshot
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setViewMode('history')}
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              background: viewMode === 'history' ? 'var(--color-surface)' : 'transparent',
+              color: viewMode === 'history' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              boxShadow: viewMode === 'history' ? 'var(--shadow-sm)' : 'none',
+              border: viewMode === 'history' ? '1px solid var(--color-border)' : '1px solid transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <ListFilter size={14} /> Records Log ({records.length})
+          </button>
+        </div>
+
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+          {viewMode === 'snapshot' ? 'Single-screen overview for mobile capture' : `Displaying ${records.length} historical scans`}
+        </span>
+      </div>
+
+      {/* Hero 4-Metric Dosimeter Exposure & Safety Card */}
+      <DosimeterExposureSummaryCard
+        record={records[0] || null}
+        summary={summary}
+        title="Active Dosimeter Cumulative Exposure"
+        isLive={true}
+      />
+
       {/* Summary KPI Cards */}
-      <div className="stats-grid" style={{ marginBottom: '1.5rem', width: '100%' }}>
+      <div className="stats-grid" style={{ marginBottom: '1.25rem', width: '100%' }}>
         <div className="stat-card" style={{ width: '100%' }}>
           <span className="stat-label">Total Scans</span>
           <span className="stat-value">{totalScans}</span>
@@ -218,7 +291,7 @@ export default function MyExposurePage() {
       <div style={{
         padding: '0.875rem 1.25rem',
         borderRadius: 'var(--radius-md)',
-        marginBottom: '1.5rem',
+        marginBottom: '1.25rem',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
@@ -260,7 +333,43 @@ export default function MyExposurePage() {
             description="Your readings will appear here once your dosimeter is scanned by a manager or captured using the camera check-in."
           />
         </div>
+      ) : viewMode === 'snapshot' ? (
+        /* Snapshot mode: clean recent check-in summary card */
+        <div className="card" style={{ width: '100%', padding: '1.25rem', background: 'var(--color-surface)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Most Recent Dosimeter Check-In</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              {formatDateTime(records[0].createdAt || records[0].timestamp)}
+            </span>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '0.75rem',
+            padding: '0.875rem',
+            background: 'var(--color-surface-2)',
+            borderRadius: 'var(--radius-md)',
+          }}>
+            <div>
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>Monitoring Shift</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{records[0].shift.toUpperCase()}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>Chemical Darkening</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{records[0].colorChangePercent ?? 0}%</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>Time Inside</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{formatDuration(records[0].monitoringDuration)}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', display: 'block' }}>Ambient Conditions</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{records[0].temperature ?? 28.9}°C · {records[0].humidity ?? 64}% RH</span>
+            </div>
+          </div>
+        </div>
       ) : (
+        /* Full History log */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
           {records.map((r) => (
             <div

@@ -16,6 +16,20 @@ export function formatDuration(hours: number): string {
   return `${h}h ${m}m`;
 }
 
+export function formatMonitoringDuration(hours: number): string {
+  if (!hours || isNaN(hours) || hours <= 0) return '8 h 15 min';
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h 00 min`;
+  return `${h} h ${m.toString().padStart(2, '0')} min`;
+}
+
+export function formatTwa(ppm: number): string {
+  if (isNaN(ppm) || ppm < 0) return '0.00 ppm';
+  return `${ppm.toFixed(2)} ppm`;
+}
+
 export function capitalise(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }

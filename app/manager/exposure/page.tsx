@@ -17,6 +17,7 @@ import { DosimeterBadge, DoseLevelBadge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Activity, Search, TrendingUp, AlertTriangle, BarChart2, Users } from 'lucide-react';
+import { DosimeterExposureSummaryCard } from '@/components/exposure/DosimeterExposureSummaryCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -200,6 +201,13 @@ export default function ManagerExposurePage() {
         />
       ) : (
         <>
+          {/* Active Field Dosimeter Exposure Benchmark Card */}
+          <DosimeterExposureSummaryCard
+            record={records[0] || null}
+            title="Active Field Dosimeter Exposure Benchmark"
+            isLive={true}
+          />
+
           {/* ── Stats row ── */}
           <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
             <div className="stat-card">
