@@ -258,6 +258,17 @@
     border-color: var(--color-navy-light);
   }
 
+  .btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-strong);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    border-color: var(--color-text-muted);
+    color: var(--color-text-primary);
+  }
+
   .btn-accent {
     background: var(--color-accent);
     color: #fff;
@@ -1014,11 +1025,30 @@
 
   .landing-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1280px;
     margin-left: auto;
     margin-right: auto;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+  }
+
+  .landing-nav-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+  @media (min-width: 768px) {
+    .landing-nav-container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
   }
 
   .landing-hero-glow {
