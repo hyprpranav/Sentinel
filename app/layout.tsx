@@ -9,14 +9,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SENTINEL - Passive Exposure Intelligence for Safer Workplaces',
+  title: 'SENTINELTRACK — H₂S Sentinel | Cumulative Gas Exposure Monitoring',
   description:
-    'SENTINEL is a digital platform for passive colorimetric H₂S exposure dosimeter wristbands. Track, analyse, and manage cumulative H₂S exposure for industrial workers.',
-  keywords: ['H2S', 'dosimeter', 'safety', 'industrial', 'MRPL', 'exposure monitoring'],
+    'SENTINELTRACK: A Color-Changing Wristband for Tracking Cumulative H₂S Gas Exposure. Passive colorimetric sensing, smartphone image analysis, and digital worker exposure records.',
+  keywords: ['H2S', 'dosimeter', 'safety', 'industrial', 'MRPL', 'exposure monitoring', 'SENTINELTRACK'],
   authors: [{ name: 'Team Sensation' }],
   openGraph: {
-    title: 'SENTINEL',
-    description: 'Passive Exposure Intelligence for Safer Workplaces',
+    title: 'SENTINELTRACK — H₂S Sentinel',
+    description: 'A Color-Changing Wristband for Tracking Cumulative H₂S Gas Exposure',
     type: 'website',
   },
 };
@@ -28,7 +28,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('sentinel-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(!t&&p)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
       </body>
